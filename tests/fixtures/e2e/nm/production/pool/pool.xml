@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <pool><pool_idn>100</pool_idn><pool_nam>Delaware</pool_nam></pool>
+  <pool><pool_idn>200</pool_idn><pool_nam>Hobbs</pool_nam></pool>
+</root>

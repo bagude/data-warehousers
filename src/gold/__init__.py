@@ -1,0 +1,1 @@
+"""Gold dimensional model package."""

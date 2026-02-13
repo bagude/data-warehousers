@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "og-data-warehouse"
+version = "0.1.0"
+description = "Oil & gas production data warehouse — medallion architecture (bronze/silver/gold) for Texas RRC and New Mexico OCD data."
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb",
+    "dbt-duckdb",
+    "dagster",
+    "dagster-duckdb",
+    "dagster-webserver",
+    "httpx",
+    "beautifulsoup4",
+    "pandas",
+    "pyarrow",
+    "lxml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "orchestration"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

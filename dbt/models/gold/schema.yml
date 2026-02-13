@@ -1,0 +1,195 @@
+version: 2
+
+models:
+  # -------------------------------------------------------------------
+  # monthly_production_by_operator
+  # -------------------------------------------------------------------
+  - name: monthly_production_by_operator
+    description: >
+      Aggregated monthly oil, gas, and water production by operator, state,
+      and county.  Includes well/lease counts and both combined totals
+      (crude+condensate, well gas+casinghead) and raw component volumes.
+    columns:
+      - name: operator
+        description: "Operator name."
+        tests:
+          - not_null
+
+      - name: state
+        tests:
+          - not_null
+
+      - name: production_date
+        tests:
+          - not_null
+
+      - name: entity_count
+        description: "Total well + lease records aggregated into this row."
+
+      - name: well_count
+        description: "Number of well-level records in this aggregation."
+
+      - name: lease_count
+        description: "Number of lease-level records in this aggregation."
+
+      - name: total_oil_bbl
+        description: "Sum of crude oil + condensate in barrels."
+
+      - name: total_gas_mcf
+        description: "Sum of gas well gas + casinghead gas in MCF."
+
+    tests:
+      - unique:
+          column_name: "operator || '|' || state || '|' || coalesce(county, '') || '|' || cast(production_date as varchar)"
+
+  # -------------------------------------------------------------------
+  # monthly_production_by_field
+  # -------------------------------------------------------------------
+  - name: monthly_production_by_field
+    description: >
+      Aggregated monthly production by field/pool, basin, and state.
+      Includes well/lease counts.
+    columns:
+      - name: field_name
+        description: "Oil/gas field or NM pool name."
+        tests:
+          - not_null
+
+      - name: state
+        tests:
+          - not_null
+
+      - name: production_date
+        tests:
+          - not_null
+
+      - name: well_count
+        description: "Number of well-level records."
+
+      - name: lease_count
+        description: "Number of lease-level records."
+
+    tests:
+      - unique:
+          column_name: "field_name || '|' || coalesce(basin, '') || '|' || state || '|' || cast(production_date as varchar)"
+
+  # -------------------------------------------------------------------
+  # monthly_production_by_county
+  # -------------------------------------------------------------------
+  - name: monthly_production_by_county
+    description: >
+      Aggregated monthly production by county and state.  Geographic roll-up
+      for regional and mapping analysis.  Includes well/lease counts.
+    columns:
+      - name: county
+        description: "County name."
+        tests:
+          - not_null
+
+      - name: state
+        tests:
+          - not_null
+
+      - name: production_date
+        tests:
+          - not_null
+
+      - name: well_count
+        description: "Number of well-level records."
+
+      - name: lease_count
+        description: "Number of lease-level records."
+
+    tests:
+      - unique:
+          column_name: "county || '|' || state || '|' || cast(production_date as varchar)"
+
+  # -------------------------------------------------------------------
+  # well_production_history
+  # -------------------------------------------------------------------
+  - name: well_production_history
+    description: >
+      Well-level (and lease-level) time series with all monthly production
+      records.  Includes cumulative oil/gas/water and months_on_production
+      counter.  Unified entity_id for convenient querying.
+    columns:
+      - name: entity_id
+        description: "api_number for wells, state-district-lease_number for leases."
+        tests:
+          - not_null
+
+      - name: state
+        tests:
+          - not_null
+
+      - name: production_date
+        tests:
+          - not_null
+
+      - name: months_on_production
+        description: "Ordinal month counter (1 = first month for this entity)."
+        tests:
+          - not_null
+
+      - name: cumulative_oil_bbl
+        description: "Running sum of total oil through this month."
+
+      - name: cumulative_gas_mcf
+        description: "Running sum of total gas through this month."
+
+      - name: cumulative_water_bbl
+        description: "Running sum of water through this month."
+
+    tests:
+      - unique:
+          column_name: "entity_id || '|' || state || '|' || cast(production_date as varchar)"
+
+  # -------------------------------------------------------------------
+  # decline_curve_inputs
+  # -------------------------------------------------------------------
+  - name: decline_curve_inputs
+    description: >
+      Per-well monthly production with decline curve analysis (DCA) inputs:
+      months_on_production counter, initial production rates, cumulative
+      volumes, and oil rate as percentage of initial.  Only well-level
+      records (entity_type = 'well') are included.
+    columns:
+      - name: api_number
+        description: "API well number."
+        tests:
+          - not_null
+
+      - name: state
+        tests:
+          - not_null
+
+      - name: production_date
+        tests:
+          - not_null
+
+      - name: months_on_production
+        description: "1-indexed ordinal month counter from first production month."
+        tests:
+          - not_null
+
+      - name: initial_oil_rate
+        description: "Total oil (BBL) in this well's first producing month."
+
+      - name: initial_gas_rate
+        description: "Total gas (MCF) in this well's first producing month."
+
+      - name: oil_rate_pct_of_initial
+        description: "Current month oil / initial oil * 100.  NULL if initial is 0."
+
+      - name: cumulative_oil
+        description: "Running sum of total oil through this month."
+
+      - name: cumulative_gas
+        description: "Running sum of total gas through this month."
+
+      - name: cumulative_water
+        description: "Running sum of water through this month."
+
+    tests:
+      - unique:
+          column_name: "api_number || '|' || state || '|' || cast(production_date as varchar)"

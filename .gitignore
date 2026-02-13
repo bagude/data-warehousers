@@ -1,0 +1,39 @@
+# Data files
+data/
+
+# DuckDB
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+
+# Dagster
+.dagster/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp Dagster homes (test artifacts)
+.tmp_dagster_home_*/
+
+# Cache
+.pytest_cache/
+.ruff_cache/
+
+# Claude Code local settings
+.claude/settings.local.json

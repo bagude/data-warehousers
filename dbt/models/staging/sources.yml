@@ -1,0 +1,63 @@
+version: 2
+
+sources:
+  - name: silver
+    description: >
+      Silver-layer production data.  Parquet files written by the bronze-to-silver
+      parsers (TX and NM), stored under data/silver/production/.
+      Read natively by DuckDB via read_parquet() in the staging model.
+      The source definition here is for documentation only — the staging model
+      uses a direct read_parquet() call rather than {{ source() }}.
+    meta:
+      layer: silver
+    tables:
+      - name: production
+        description: >
+          Unified monthly production records from TX RRC and NM OCD.
+          Each row represents one entity (well or lease) for one production month.
+          Schema defined in src/schemas/production.py.
+        meta:
+          external_location: "../data/silver/production/**/*.parquet"
+        columns:
+          - name: state
+            description: "Two-letter state code: TX or NM."
+          - name: entity_type
+            description: "Record granularity: 'well' or 'lease'."
+          - name: api_number
+            description: "API well number (NN-NNN-NNNNN). NULL for multi-well TX leases."
+          - name: lease_number
+            description: "TX RRC lease number. NULL for NM records."
+          - name: district
+            description: "TX RRC district number. NULL for NM records."
+          - name: well_name
+            description: "Well or lease name as reported by the operator."
+          - name: operator
+            description: "Operator name."
+          - name: county
+            description: "County where the well or lease is located."
+          - name: field_name
+            description: "Oil/gas field name (TX) or pool name (NM)."
+          - name: basin
+            description: "Basin name (e.g. Permian, San Juan). May be NULL."
+          - name: well_type
+            description: "Normalized well type: OIL, GAS, INJ, OTHER, etc."
+          - name: well_status
+            description: "Normalized status: ACTIVE, SHUT-IN, P&A, INACTIVE, OTHER."
+          - name: production_date
+            description: "First day of the production month."
+          - name: oil_bbl
+            description: "Crude oil production in barrels (excl. condensate)."
+          - name: gas_mcf
+            description: "Gas well gas in MCF (excl. casinghead gas)."
+          - name: condensate_bbl
+            description: "Condensate in barrels. NULL for NM."
+          - name: casinghead_gas_mcf
+            description: "Casinghead gas in MCF. NULL for NM."
+          - name: water_bbl
+            description: "Produced water in barrels. NULL for TX."
+          - name: days_produced
+            description: "Days producing in the month (0-31). NULL for TX."
+          - name: source_file
+            description: "Bronze file this record was parsed from."
+          - name: ingested_at
+            description: "UTC timestamp of silver-layer ingestion."

@@ -1,0 +1,18 @@
+# dbt profile for og_warehouse.
+#
+# DuckDB is used as the warehouse engine.  The database file lives at
+# data/warehouse.duckdb (relative to the project root, one level above dbt/).
+#
+# In production the path can be overridden via the DUCKDB_PATH env var.
+
+og_warehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
+    e2e:
+      type: duckdb
+      path: "../data/e2e/warehouse.duckdb"
+      threads: 4

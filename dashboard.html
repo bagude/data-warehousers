@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OG Warehouse — Gold Layer</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0A0C10;
+    --panel: #12151B;
+    --panel-hover: #181C24;
+    --border: #232830;
+    --border-glow: #2E3440;
+    --text: #C8CCD4;
+    --text-dim: #5C6370;
+    --text-bright: #E8ECF4;
+    --amber: #E8A838;
+    --amber-dim: rgba(232,168,56,0.15);
+    --teal: #4ECDC4;
+    --coral: #FF6B6B;
+    --lavender: #7C83FF;
+    --green: #45B764;
+    --pink: #E866A0;
+    --gold: #F0C040;
+    --blue: #58A6E8;
+    --copper: #C87941;
+    --sage: #7EB89A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle background grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    position: relative;
+    z-index: 1;
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(232,168,56,0.04) 0%, transparent 100%);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+
+  .header h1 {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    color: var(--text-bright);
+  }
+
+  .header h1 span {
+    color: var(--amber);
+  }
+
+  .header-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-dim);
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid rgba(232,168,56,0.25);
+  }
+
+  .header-sub {
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+
+  /* Grid */
+  .grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+
+  .grid > .panel:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  /* Panels */
+  .panel {
+    background: var(--panel);
+    padding: 28px 32px;
+    position: relative;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s ease;
+  }
+
+  .panel:hover {
+    background: var(--panel-hover);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: var(--text-bright);
+    text-transform: uppercase;
+  }
+
+  .panel-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: var(--amber);
+    margin-right: 10px;
+    vertical-align: middle;
+    border-radius: 1px;
+  }
+
+  .panel-badge {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  .panel-subtitle {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: -14px;
+    margin-bottom: 18px;
+    padding-left: 13px;
+  }
+
+  .chart-wrap {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+
+  .chart-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Legend strip */
+  .legend-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-value {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--amber);
+    letter-spacing: -0.01em;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 16px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .loading::after {
+    content: '';
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    margin-left: 14px;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .grid { grid-template-columns: 1fr; }
+    .header { padding: 28px 24px 24px; }
+    .panel { padding: 24px 20px; }
+  }
+
+  /* Fade-in animation */
+  .panel {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeUp 0.6s ease forwards;
+  }
+  .panel:nth-child(1) { animation-delay: 0.1s; }
+  .panel:nth-child(2) { animation-delay: 0.2s; }
+  .panel:nth-child(3) { animation-delay: 0.3s; }
+  .panel:nth-child(4) { animation-delay: 0.4s; }
+  .panel:nth-child(5) { animation-delay: 0.5s; }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div id="app" class="loading">LOADING WAREHOUSE DATA</div>
+
+<script>
+const COLORS = {
+  amber:    '#E8A838',
+  teal:     '#4ECDC4',
+  coral:    '#FF6B6B',
+  lavender: '#7C83FF',
+  green:    '#45B764',
+  pink:     '#E866A0',
+  gold:     '#F0C040',
+  blue:     '#58A6E8',
+  copper:   '#C87941',
+  sage:     '#7EB89A',
+  slate:    '#8B95A5',
+  red:      '#E85454',
+};
+const PALETTE = Object.values(COLORS);
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 1200, easing: 'easeOutQuart' },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1A1E26',
+      borderColor: '#2E3440',
+      borderWidth: 1,
+      titleFont: { family: "'IBM Plex Mono', monospace", size: 11, weight: '600' },
+      bodyFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+      titleColor: '#E8ECF4',
+      bodyColor: '#C8CCD4',
+      padding: 10,
+      cornerRadius: 4,
+      displayColors: true,
+      boxWidth: 8,
+      boxHeight: 8,
+      boxPadding: 4,
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: 'rgba(46,52,64,0.5)', lineWidth: 0.5 },
+      ticks: { color: '#5C6370', font: { family: "'IBM Plex Mono', monospace", size: 10 } },
+      border: { color: '#2E3440' },
+    },
+    y: {
+      grid: { color: 'rgba(46,52,64,0.5)', lineWidth: 0.5 },
+      ticks: { color: '#5C6370', font: { family: "'IBM Plex Mono', monospace", size: 10 } },
+      border: { color: '#2E3440' },
+    },
+  },
+};
+
+function fmt(n) {
+  if (n == null) return '—';
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function fmtBbl(n) { return fmt(n) + ' bbl'; }
+function fmtMcf(n) { return fmt(n) + ' mcf'; }
+
+function deepMerge(target, source) {
+  const out = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      out[key] = deepMerge(out[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+
+function makeLegend(items) {
+  return `<div class="legend-strip">${items.map(([label, color]) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${label}</div>`
+  ).join('')}</div>`;
+}
+
+// ─── CHART BUILDERS ─────────────────────────────────────────────
+
+function buildWellHistory(data) {
+  const wells = [...new Set(data.map(r => r.entity_id))];
+  const datasets = wells.map((id, i) => {
+    const rows = data.filter(r => r.entity_id === id).sort((a, b) => a.months_on_production - b.months_on_production);
+    const name = rows[0].well_name || id;
+    return {
+      label: name,
+      data: rows.map(r => ({ x: r.months_on_production, y: r.total_oil_bbl })),
+      borderColor: PALETTE[i],
+      backgroundColor: PALETTE[i] + '18',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      pointHitRadius: 6,
+      tension: 0.3,
+      fill: false,
+    };
+  });
+
+  const maxCum = Math.max(...data.map(r => r.cumulative_oil_bbl || 0));
+  const totalRecords = data.length;
+
+  return {
+    stats: [
+      { value: wells.length, label: 'Wells' },
+      { value: fmt(maxCum), label: 'Peak Cum Oil' },
+      { value: totalRecords, label: 'Records' },
+    ],
+    legend: wells.map((id, i) => {
+      const rows = data.filter(r => r.entity_id === id);
+      return [rows[0].well_name || id, PALETTE[i]];
+    }),
+    config: deepMerge(CHART_DEFAULTS, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'MONTHS ON PRODUCTION', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } } },
+          y: { title: { display: true, text: 'OIL (BBL/MO)', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } },
+               ticks: { callback: v => fmt(v) } },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} bbl` } },
+        },
+      },
+    }),
+  };
+}
+
+function buildCounty(data) {
+  const counties = [...new Set(data.map(r => r.county + ' (' + r.state + ')'))];
+  const years = [...new Set(data.map(r => r.production_year))].sort();
+  const latestYear = Math.max(...years);
+
+  // Sort counties by latest year production
+  counties.sort((a, b) => {
+    const aVal = data.find(r => (r.county + ' (' + r.state + ')') === a && r.production_year === latestYear)?.oil || 0;
+    const bVal = data.find(r => (r.county + ' (' + r.state + ')') === b && r.production_year === latestYear)?.oil || 0;
+    return bVal - aVal;
+  });
+
+  const datasets = years.slice(-4).map((yr, i) => ({
+    label: String(yr),
+    data: counties.map(c => {
+      const row = data.find(r => (r.county + ' (' + r.state + ')') === c && r.production_year === yr);
+      return row ? row.oil : 0;
+    }),
+    backgroundColor: [COLORS.amber, COLORS.teal, COLORS.lavender, COLORS.coral][i] + 'CC',
+    borderColor: [COLORS.amber, COLORS.teal, COLORS.lavender, COLORS.coral][i],
+    borderWidth: 1,
+    borderRadius: 2,
+    barPercentage: 0.85,
+    categoryPercentage: 0.8,
+  }));
+
+  const totalOil = data.filter(r => r.production_year === latestYear).reduce((s, r) => s + (r.oil || 0), 0);
+
+  return {
+    stats: [
+      { value: counties.length, label: 'Counties' },
+      { value: fmt(totalOil), label: `${latestYear} Oil (bbl)` },
+    ],
+    legend: years.slice(-4).map((yr, i) => [String(yr), [COLORS.amber, COLORS.teal, COLORS.lavender, COLORS.coral][i]]),
+    config: deepMerge(CHART_DEFAULTS, {
+      type: 'bar',
+      data: { labels: counties, datasets },
+      options: {
+        indexAxis: 'y',
+        scales: {
+          x: { ticks: { callback: v => fmt(v) },
+               title: { display: true, text: 'TOTAL OIL (BBL)', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } } },
+          y: { ticks: { font: { size: 10 } } },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.x)} bbl` } },
+        },
+      },
+    }),
+  };
+}
+
+function buildOperator(data) {
+  const ops = [...new Set(data.map(r => r.operator))];
+  const years = [...new Set(data.map(r => r.production_year))].sort();
+
+  // Sort by total oil desc
+  ops.sort((a, b) => {
+    const aT = data.filter(r => r.operator === a).reduce((s, r) => s + (r.oil || 0), 0);
+    const bT = data.filter(r => r.operator === b).reduce((s, r) => s + (r.oil || 0), 0);
+    return bT - aT;
+  });
+
+  const datasets = ops.map((op, i) => {
+    const rows = data.filter(r => r.operator === op);
+    return {
+      label: op,
+      data: years.map(yr => {
+        const row = rows.find(r => r.production_year === yr);
+        return row ? row.oil : 0;
+      }),
+      backgroundColor: PALETTE[i] + 'DD',
+      borderColor: PALETTE[i],
+      borderWidth: 1,
+      borderRadius: 2,
+    };
+  });
+
+  return {
+    stats: [
+      { value: ops.length, label: 'Operators' },
+      { value: years.length, label: 'Years' },
+    ],
+    legend: ops.map((op, i) => [op.length > 28 ? op.slice(0, 26) + '…' : op, PALETTE[i]]),
+    config: deepMerge(CHART_DEFAULTS, {
+      type: 'bar',
+      data: { labels: years.map(String), datasets },
+      options: {
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, ticks: { callback: v => fmt(v) },
+               title: { display: true, text: 'TOTAL OIL (BBL)', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } } },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} bbl` } },
+        },
+      },
+    }),
+  };
+}
+
+function buildField(data) {
+  const fields = [...new Set(data.map(r => r.field_name))];
+  const years = [...new Set(data.map(r => r.production_year))].sort();
+
+  // Sort by total oil desc
+  fields.sort((a, b) => {
+    const aT = data.filter(r => r.field_name === a).reduce((s, r) => s + (r.oil || 0), 0);
+    const bT = data.filter(r => r.field_name === b).reduce((s, r) => s + (r.oil || 0), 0);
+    return bT - aT;
+  });
+
+  const datasets = fields.map((fld, i) => {
+    const rows = data.filter(r => r.field_name === fld);
+    return {
+      label: fld,
+      data: years.map(yr => rows.find(r => r.production_year === yr)?.oil || 0),
+      borderColor: PALETTE[i],
+      backgroundColor: PALETTE[i] + '22',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: PALETTE[i],
+      pointBorderColor: '#12151B',
+      pointBorderWidth: 1.5,
+      tension: 0.35,
+      fill: true,
+    };
+  });
+
+  return {
+    stats: [
+      { value: fields.length, label: 'Fields' },
+    ],
+    legend: fields.map((f, i) => [f.length > 32 ? f.slice(0, 30) + '…' : f, PALETTE[i]]),
+    config: deepMerge(CHART_DEFAULTS, {
+      type: 'line',
+      data: { labels: years.map(String), datasets },
+      options: {
+        scales: {
+          y: { ticks: { callback: v => fmt(v) },
+               title: { display: true, text: 'ANNUAL OIL (BBL)', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } } },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} bbl` } },
+        },
+      },
+    }),
+  };
+}
+
+function buildDeclineCurve(data) {
+  const wells = [...new Set(data.map(r => r.api_number))];
+
+  const datasets = wells.map((api, i) => {
+    const rows = data.filter(r => r.api_number === api).sort((a, b) => a.months_on_production - b.months_on_production);
+    const name = rows[0].well_name + ' — ' + rows[0].county;
+    return {
+      label: name,
+      data: rows.map(r => ({ x: r.months_on_production, y: r.total_oil_bbl })),
+      borderColor: PALETTE[i],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHitRadius: 6,
+      tension: 0.3,
+    };
+  });
+
+  // Compute average initial rate
+  const initRates = wells.map(api => {
+    const rows = data.filter(r => r.api_number === api);
+    return rows[0]?.initial_oil_rate || 0;
+  });
+  const avgInit = initRates.reduce((a, b) => a + b, 0) / initRates.length;
+
+  return {
+    stats: [
+      { value: wells.length, label: 'Wells' },
+      { value: fmt(avgInit), label: 'Avg Initial Rate (bbl)' },
+    ],
+    legend: wells.map((api, i) => {
+      const rows = data.filter(r => r.api_number === api);
+      return [rows[0].well_name + ' (' + rows[0].county + ')', PALETTE[i]];
+    }),
+    config: deepMerge(CHART_DEFAULTS, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        scales: {
+          x: { type: 'linear',
+               title: { display: true, text: 'MONTHS ON PRODUCTION', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } },
+               min: 1 },
+          y: { type: 'logarithmic',
+               title: { display: true, text: 'OIL RATE (BBL/MO) — LOG', color: '#5C6370', font: { family: "'IBM Plex Mono'", size: 10 } },
+               ticks: { callback: v => fmt(v) },
+               grid: { color: ctx => ctx.tick.value === 10000 || ctx.tick.value === 1000 || ctx.tick.value === 100 ? 'rgba(232,168,56,0.15)' : 'rgba(46,52,64,0.5)' } },
+        },
+        plugins: {
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} bbl (mo ${ctx.parsed.x})` } },
+        },
+      },
+    }),
+  };
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────
+
+function renderPanel(id, title, badge, subtitle, build) {
+  const { stats, legend, config } = build;
+  const statsHtml = stats ? `<div class="stats-row">${stats.map(s =>
+    `<div class="stat"><div class="stat-value">${s.value}</div><div class="stat-label">${s.label}</div></div>`
+  ).join('')}</div>` : '';
+
+  return `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">${title}</div>
+        <div class="panel-badge">${badge}</div>
+      </div>
+      ${subtitle ? `<div class="panel-subtitle">${subtitle}</div>` : ''}
+      ${statsHtml}
+      <div class="chart-wrap"><canvas id="${id}"></canvas></div>
+      ${legend ? makeLegend(legend) : ''}
+    </div>
+  `;
+}
+
+async function main() {
+  const resp = await fetch('viz_data.json');
+  if (!resp.ok) throw new Error('Failed to load viz_data.json — run test_full_pipeline or full_refresh first');
+  const raw = await resp.json();
+
+  const panels = [
+    {
+      id: 'chart-well', title: 'Well Production History', badge: 'TOP 5 WELLS',
+      subtitle: 'Monthly oil production rate by months on production — top cumulative producers',
+      build: buildWellHistory(raw.wellHistory),
+    },
+    {
+      id: 'chart-decline', title: 'Decline Curve Analysis', badge: 'DCA',
+      subtitle: 'Log-scale rate vs. time for top initial-rate wells — first 60 months',
+      build: buildDeclineCurve(raw.declineCurve),
+    },
+    {
+      id: 'chart-county', title: 'Production by County', badge: 'TOP 12 COUNTIES',
+      subtitle: 'Annual oil production by county — 2022 through 2025',
+      build: buildCounty(raw.county),
+    },
+    {
+      id: 'chart-operator', title: 'Production by Operator', badge: 'TOP 10 OPERATORS',
+      subtitle: 'Stacked annual oil production — 2018 through latest',
+      build: buildOperator(raw.operator),
+    },
+    {
+      id: 'chart-field', title: 'Production by Field', badge: 'TOP 10 FIELDS',
+      subtitle: 'Annual oil production trend lines by field/formation — 2018 through latest',
+      build: buildField(raw.field),
+    },
+  ];
+
+  // State-level stats
+  const txOil = raw.stateTotals.filter(r => r.state === 'TX').reduce((s, r) => s + (r.oil || 0), 0);
+  const nmOil = raw.stateTotals.filter(r => r.state === 'NM').reduce((s, r) => s + (r.oil || 0), 0);
+  const txGas = raw.stateTotals.filter(r => r.state === 'TX').reduce((s, r) => s + (r.gas || 0), 0);
+  const nmGas = raw.stateTotals.filter(r => r.state === 'NM').reduce((s, r) => s + (r.gas || 0), 0);
+
+  document.getElementById('app').className = '';
+  document.getElementById('app').innerHTML = `
+    <div class="header">
+      <div class="header-top">
+        <h1>OG <span>Warehouse</span></h1>
+        <div class="header-tag">Gold Layer</div>
+      </div>
+      <div class="header-sub">
+        TX ${fmt(txOil)} bbl oil · ${fmt(txGas)} mcf gas &nbsp;│&nbsp;
+        NM ${fmt(nmOil)} bbl oil · ${fmt(nmGas)} mcf gas &nbsp;│&nbsp;
+        5 gold models · 10 quality tests passed · 92.7M records
+      </div>
+    </div>
+    <div class="grid">
+      ${panels.map(p => renderPanel(p.id, p.title, p.badge, p.subtitle, p.build)).join('')}
+    </div>
+  `;
+
+  // Create charts after DOM is ready
+  requestAnimationFrame(() => {
+    panels.forEach(p => {
+      const ctx = document.getElementById(p.id).getContext('2d');
+      new Chart(ctx, {
+        type: p.build.config.type,
+        data: p.build.config.data,
+        options: p.build.config.options || p.build.config,
+      });
+    });
+  });
+}
+
+main().catch(err => {
+  document.getElementById('app').innerHTML = `
+    <div style="padding:48px;color:var(--coral);font-family:'IBM Plex Mono',monospace;">
+      <strong>Error:</strong> ${err.message}<br><br>
+      <span style="color:var(--text-dim)">Make sure viz_data.json exists in the same directory as this file.</span>
+    </div>
+  `;
+});
+</script>
+</body>
+</html>

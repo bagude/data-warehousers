@@ -1,0 +1,30 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "id": "3001500001",
+        "well_name": "DELAWARE BASIN 1",
+        "ogrid_name": "Summit Petroleum",
+        "county": "Eddy",
+        "pool": "Delaware",
+        "type": "OIL",
+        "status": "ACTIVE",
+        "latitude": 32.4425,
+        "longitude": -104.2283
+      }
+    },
+    {
+      "attributes": {
+        "id": "3002500001",
+        "well_name": "HOBBS GAS UNIT 1",
+        "ogrid_name": "Crossroads Resources",
+        "county": "Lea",
+        "pool": "Hobbs",
+        "type": "GAS",
+        "status": "ACTIVE",
+        "latitude": 32.7254,
+        "longitude": -103.1361
+      }
+    }
+  ]
+}

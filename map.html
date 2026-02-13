@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OG Warehouse — Production Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0A0C10;
+    --panel: #12151B;
+    --border: #232830;
+    --text: #C8CCD4;
+    --text-dim: #5C6370;
+    --text-bright: #E8ECF4;
+    --amber: #E8A838;
+    --amber-dim: rgba(232,168,56,0.12);
+    --teal: #4ECDC4;
+    --coral: #FF6B6B;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 1000;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .header h1 {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 0.02em;
+    color: var(--text-bright);
+  }
+
+  .header h1 span { color: var(--amber); }
+
+  .header-tag {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-dim);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid rgba(232,168,56,0.25);
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .header-stats strong {
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  /* Controls */
+  .controls {
+    position: absolute;
+    top: 72px;
+    right: 16px;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-btn {
+    background: rgba(18,21,27,0.92);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+    text-transform: uppercase;
+  }
+
+  .control-btn:hover { color: var(--text); border-color: var(--text-dim); }
+  .control-btn.active { color: var(--amber); border-color: var(--amber); background: rgba(232,168,56,0.08); }
+
+  /* Legend */
+  .map-legend {
+    position: absolute;
+    bottom: 24px;
+    left: 16px;
+    z-index: 900;
+    background: rgba(18,21,27,0.92);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    backdrop-filter: blur(8px);
+    min-width: 180px;
+  }
+
+  .map-legend h3 {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-bright);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .legend-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .legend-circle {
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  /* Info / history side panel */
+  .info-panel {
+    position: absolute;
+    top: 72px;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    background: rgba(12,14,18,0.97);
+    border-left: 1px solid var(--border);
+    padding: 20px 20px 20px 20px;
+    backdrop-filter: blur(12px);
+    width: 380px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+
+  .info-panel.visible { transform: translateX(0); }
+
+  .info-panel h3 {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-bright);
+    margin-bottom: 2px;
+  }
+
+  .info-state {
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .info-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .info-value {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-bright);
+  }
+
+  .info-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .info-value.oil { color: var(--amber); }
+  .info-value.gas { color: var(--teal); }
+  .info-value.water { color: #58A6E8; }
+
+  /* Chart section */
+  .chart-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .chart-title {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-bright);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .chart-svg { display: block; width: 100%; }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+
+  .chart-legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .chart-axis-label {
+    font-size: 9px;
+    fill: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .chart-loading {
+    text-align: center;
+    padding: 24px 0;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .chart-empty {
+    text-align: center;
+    padding: 16px 0;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .info-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 14px;
+    cursor: pointer;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .info-close:hover { color: var(--text-bright); border-color: var(--text-dim); }
+
+  /* Sparkline container (counties) */
+  .info-spark {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .info-spark-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .spark-svg { display: block; }
+
+  /* Map */
+  #map {
+    flex: 1;
+    background: var(--bg);
+  }
+
+  /* Override Leaflet */
+  .leaflet-container { background: var(--bg) !important; }
+  .leaflet-control-zoom a {
+    background: rgba(18,21,27,0.9) !important;
+    color: var(--text-dim) !important;
+    border-color: var(--border) !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+  }
+  .leaflet-control-zoom a:hover {
+    background: var(--panel) !important;
+    color: var(--text) !important;
+  }
+
+  /* Tooltip override */
+  .county-tooltip {
+    background: rgba(18,21,27,0.95) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 4px !important;
+    color: var(--text) !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+  }
+
+  .county-tooltip .county-name {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-bright);
+  }
+
+  .county-tooltip .county-val {
+    color: var(--amber);
+    font-weight: 500;
+  }
+
+  .leaflet-tooltip-top:before,
+  .leaflet-tooltip-bottom:before,
+  .leaflet-tooltip-left:before,
+  .leaflet-tooltip-right:before {
+    border-top-color: rgba(18,21,27,0.95) !important;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    transition: opacity 0.5s;
+  }
+
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+  .loading-overlay::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    margin-left: 12px;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Pulse animation for circles */
+  @keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 0.9; }
+    100% { opacity: 0.7; }
+  }
+
+  /* View toggle */
+  .view-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 8px;
+  }
+
+  .view-btn {
+    flex: 1;
+    background: rgba(18,21,27,0.92);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+    text-transform: uppercase;
+  }
+
+  .view-btn:first-child { border-radius: 4px 0 0 4px; }
+  .view-btn:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+  .view-btn:hover { color: var(--text); }
+  .view-btn.active {
+    color: var(--text-bright);
+    background: rgba(232,168,56,0.12);
+    border-color: var(--amber);
+  }
+  .view-btn.active + .view-btn { border-left-color: var(--amber); }
+
+  /* Well tooltip */
+  .well-tooltip {
+    background: rgba(18,21,27,0.95) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 4px !important;
+    color: var(--text) !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+    line-height: 1.6 !important;
+  }
+
+  .well-tooltip .wt-name {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-bright);
+  }
+
+  .well-tooltip .wt-val { color: var(--amber); font-weight: 500; }
+  .well-tooltip .wt-dim { color: var(--text-dim); }
+
+  /* Well popup (Leaflet popup override) */
+  .well-popup .leaflet-popup-content-wrapper {
+    background: rgba(18,21,27,0.97) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    color: var(--text) !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+  }
+  .well-popup .leaflet-popup-tip { background: rgba(18,21,27,0.97) !important; }
+  .well-popup .leaflet-popup-close-button {
+    color: var(--text-dim) !important;
+    font-size: 16px !important;
+  }
+  .well-popup .leaflet-popup-close-button:hover { color: var(--text-bright) !important; }
+  .well-popup .leaflet-popup-content { margin: 14px 16px !important; }
+
+  .wp-name {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-bright);
+    margin-bottom: 2px;
+  }
+  .wp-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .wp-meta .wp-state {
+    color: var(--amber);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .wp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-bottom: 10px;
+  }
+  .wp-val {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-bright);
+  }
+  .wp-val.oil { color: var(--amber); }
+  .wp-val.gas { color: var(--teal); }
+  .wp-val.water { color: #58A6E8; }
+  .wp-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .wp-footer {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>OG <span>Warehouse</span></h1>
+    <div class="header-tag">Production Map</div>
+  </div>
+  <div class="header-stats" id="header-stats"></div>
+</div>
+
+<div id="map"></div>
+
+<div class="controls">
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="counties" onclick="setView('counties')">Counties</button>
+    <button class="view-btn" data-view="wells" onclick="setView('wells')">Wells</button>
+  </div>
+  <button class="control-btn active" data-mode="oil" onclick="setMode('oil')">Oil (bbl)</button>
+  <button class="control-btn" data-mode="gas" onclick="setMode('gas')">Gas (mcf)</button>
+  <button class="control-btn" data-mode="water" onclick="setMode('water')">Water (bbl)</button>
+  <button class="control-btn" data-mode="entities" onclick="setMode('entities')">Well Count</button>
+</div>
+
+<div class="map-legend" id="map-legend"></div>
+<div class="info-panel" id="info-panel"></div>
+<div class="loading-overlay" id="loading">LOADING MAP DATA</div>
+
+<script>
+const MODES = {
+  oil:      { field: 'total_oil',      label: 'Oil Production',   unit: 'bbl', color: [232,168,56],  colorHex: '#E8A838' },
+  gas:      { field: 'total_gas',      label: 'Gas Production',   unit: 'mcf', color: [78,205,196],  colorHex: '#4ECDC4' },
+  water:    { field: 'total_water',    label: 'Water Production', unit: 'bbl', color: [88,166,232],   colorHex: '#58A6E8' },
+  entities: { field: 'total_entities', label: 'Well/Lease Count', unit: '',    color: [124,131,255],  colorHex: '#7C83FF' },
+};
+
+let currentMode = 'oil';
+let currentView = 'counties';
+let map, circleLayer, wellsLayer, countyData, yearlyData, wellsData;
+
+function fmt(n) {
+  if (n == null) return '—';
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return Math.round(n).toLocaleString();
+}
+
+function getRadius(value, maxValue) {
+  if (!value || value <= 0) return 0;
+  const normalized = Math.sqrt(value / maxValue);
+  return Math.max(4, normalized * 48);
+}
+
+function getOpacity(value, maxValue) {
+  if (!value || value <= 0) return 0;
+  const normalized = value / maxValue;
+  return 0.25 + normalized * 0.55;
+}
+
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  // Show/hide entities button (only for county view)
+  document.querySelector('[data-mode="entities"]').style.display = view === 'wells' ? 'none' : '';
+  refreshMap();
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.control-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  refreshMap();
+}
+
+function refreshMap() {
+  if (currentView === 'counties') {
+    if (wellsLayer) wellsLayer.clearLayers();
+    updateCircles();
+  } else {
+    if (circleLayer) circleLayer.clearLayers();
+    updateWells();
+  }
+  updateLegend();
+  hideInfo();
+}
+
+function updateCircles() {
+  if (!circleLayer || !countyData) return;
+  circleLayer.clearLayers();
+
+  const modeConfig = MODES[currentMode];
+  const values = countyData.filter(c => c.lat).map(c => c[modeConfig.field] || 0);
+  const maxValue = Math.max(...values);
+  const [r, g, b] = modeConfig.color;
+
+  // Sort by value descending so smaller circles render on top
+  const sorted = [...countyData].filter(c => c.lat && (c[modeConfig.field] || 0) > 0)
+    .sort((a, b) => (b[modeConfig.field] || 0) - (a[modeConfig.field] || 0));
+
+  sorted.forEach(county => {
+    const val = county[modeConfig.field] || 0;
+    const radius = getRadius(val, maxValue);
+    const opacity = getOpacity(val, maxValue);
+
+    const circle = L.circleMarker([county.lat, county.lng], {
+      radius: radius,
+      fillColor: `rgba(${r},${g},${b},${opacity})`,
+      fillOpacity: 1,
+      color: `rgba(${r},${g},${b},${Math.min(1, opacity + 0.3)})`,
+      weight: 1.5,
+      className: 'county-circle',
+    });
+
+    const tooltipContent = `
+      <div class="county-name">${county.county}, ${county.state}</div>
+      <span class="county-val">${fmt(val)}</span> ${modeConfig.unit}
+    `;
+
+    circle.bindTooltip(tooltipContent, {
+      className: 'county-tooltip',
+      direction: 'top',
+      offset: [0, -radius],
+    });
+
+    circle.on('click', () => showInfo(county));
+    circle.on('mouseover', function() {
+      this.setStyle({ weight: 2.5, color: '#fff' });
+    });
+    circle.on('mouseout', function() {
+      this.setStyle({
+        weight: 1.5,
+        color: `rgba(${r},${g},${b},${Math.min(1, opacity + 0.3)})`,
+      });
+    });
+
+    circleLayer.addLayer(circle);
+  });
+}
+
+function updateWells() {
+  if (!wellsLayer || !wellsData || !wellsData.n) return;
+  wellsLayer.clearLayers();
+
+  const w = wellsData;
+  const n = w.n;
+  const mode = currentMode === 'entities' ? 'oil' : currentMode;
+  const colorMap = { oil: [232,168,56], gas: [78,205,196], water: [88,166,232] };
+  const vals = w[mode];  // columnar array
+
+  // Find max value
+  let maxVal = 0;
+  for (let i = 0; i < n; i++) if (vals[i] > maxVal) maxVal = vals[i];
+
+  const [cr, cg, cb] = colorMap[mode];
+  const zoom = map.getZoom();
+  const maxR = zoom >= 10 ? 12 : zoom >= 8 ? 7 : 4;
+
+  // At low zoom, skip tiny producers for perf (data is pre-sorted by oil desc)
+  const minVal = zoom < 7 ? maxVal * 0.001 : 0;
+
+  for (let i = 0; i < n; i++) {
+    const v = vals[i] || 0;
+    if (!w.lat[i] || v <= minVal) continue;
+
+    const norm = Math.sqrt(v / maxVal);
+    const r = Math.max(1.5, norm * maxR);
+    const op = 0.15 + norm * 0.65;
+
+    const m = L.circleMarker([w.lat[i], w.lng[i]], {
+      radius: r,
+      fillColor: `rgb(${cr},${cg},${cb})`,
+      fillOpacity: op,
+      stroke: false,
+    });
+    m._wellIdx = i;
+    m.on('click', onWellClick);
+    wellsLayer.addLayer(m);
+  }
+}
+
+function onWellClick(e) {
+  L.DomEvent.stopPropagation(e);
+  const i = e.target._wellIdx;
+  showWellPopup(i, e.latlng);
+}
+
+function showWellPopup(i, latlng) {
+  const w = wellsData;
+  const name = w.name[i] || w.id[i];
+  const stateFull = w.state[i] === 'TX' ? 'Texas' : w.state[i] === 'NM' ? 'New Mexico' : w.state[i];
+
+  L.popup({ className: 'well-popup', maxWidth: 300 })
+    .setLatLng(latlng)
+    .setContent(`
+      <div class="wp-name">${name}</div>
+      <div class="wp-meta">
+        <span class="wp-state">${stateFull}</span> · ${w.county[i] || ''}<br>
+        ${w.op[i] || ''}
+      </div>
+      <div class="wp-grid">
+        <div><span class="wp-val oil">${fmt(w.oil[i])}</span><br><span class="wp-label">Cum Oil (bbl)</span></div>
+        <div><span class="wp-val gas">${fmt(w.gas[i])}</span><br><span class="wp-label">Cum Gas (mcf)</span></div>
+        <div><span class="wp-val water">${fmt(w.water[i])}</span><br><span class="wp-label">Cum Water (bbl)</span></div>
+        <div><span class="wp-val">${w.months[i] || '—'}</span><br><span class="wp-label">Months Prod</span></div>
+      </div>
+      <div class="wp-footer">
+        API: ${w.id[i]} · Type: ${w.type[i] || '—'}<br>
+        ${Number(w.lat[i]).toFixed(4)}°N, ${Math.abs(w.lng[i]).toFixed(4)}°W
+      </div>
+    `)
+    .openOn(map);
+
+  // Open side panel with production history
+  showWellSidePanel(i);
+}
+
+function showWellSidePanel(i) {
+  const w = wellsData;
+  const name = w.name[i] || w.id[i];
+  const stateFull = w.state[i] === 'TX' ? 'Texas' : w.state[i] === 'NM' ? 'New Mexico' : w.state[i];
+  const panel = document.getElementById('info-panel');
+
+  panel.innerHTML = `
+    <button class="info-close" onclick="hideInfo()">&times;</button>
+    <h3>${name}</h3>
+    <div class="info-state">${stateFull}</div>
+    <div class="info-meta">
+      ${w.op[i] || ''}<br>
+      ${w.county[i] || ''} · API: ${w.id[i]}
+    </div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-value oil">${fmt(w.oil[i])}</div>
+        <div class="info-label">Cum Oil (bbl)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value gas">${fmt(w.gas[i])}</div>
+        <div class="info-label">Cum Gas (mcf)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value water">${fmt(w.water[i])}</div>
+        <div class="info-label">Cum Water (bbl)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value">${w.months[i] || '—'}</div>
+        <div class="info-label">Months Prod</div>
+      </div>
+    </div>
+    <div id="history-charts">
+      <div class="chart-loading">LOADING PRODUCTION HISTORY...</div>
+    </div>
+  `;
+  panel.classList.add('visible');
+
+  // Fetch production history from DuckDB API
+  fetch('/api/well?id=' + encodeURIComponent(w.id[i]))
+    .then(r => r.json())
+    .then(data => renderWellHistory(data))
+    .catch(() => {
+      document.getElementById('history-charts').innerHTML =
+        '<div class="chart-empty">No production history available</div>';
+    });
+}
+
+function renderWellHistory(data) {
+  const el = document.getElementById('history-charts');
+  if (!data || !data.n || data.n < 2) {
+    el.innerHTML = '<div class="chart-empty">No production history available</div>';
+    return;
+  }
+
+  const n = data.n;
+  const W = 340, H = 140, pad = { t: 10, r: 10, b: 28, l: 45 };
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+
+  // === Monthly Production Chart (oil + gas) ===
+  const oilMax = Math.max(...data.oil);
+  const gasMax = Math.max(...data.gas);
+
+  function makeChart(values, maxVal, color, colorDim, label, unit) {
+    if (maxVal <= 0) return '';
+    const stepX = cw / (values.length - 1);
+
+    // Y-axis ticks
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
+      y: pad.t + ch - pct * ch,
+      label: fmt(maxVal * pct),
+    }));
+
+    // X-axis labels (show ~5 dates)
+    const xStep = Math.max(1, Math.floor(values.length / 5));
+    const xLabels = [];
+    for (let i = 0; i < values.length; i += xStep) {
+      xLabels.push({
+        x: pad.l + i * stepX,
+        label: data.dates[i] ? data.dates[i].substring(0, 7) : '',
+      });
+    }
+
+    // Build path
+    const points = values.map((v, i) => {
+      const x = pad.l + i * stepX;
+      const y = pad.t + ch - (v / maxVal) * ch;
+      return `${x},${y}`;
+    });
+    const areaPoints = `${pad.l},${pad.t + ch} ${points.join(' ')} ${pad.l + (values.length - 1) * stepX},${pad.t + ch}`;
+
+    return `
+      <div class="chart-section">
+        <div class="chart-title">${label}</div>
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+          <defs>
+            <linearGradient id="grad-${label}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="${color}" stop-opacity="0.03"/>
+            </linearGradient>
+          </defs>
+          <!-- grid lines -->
+          ${yTicks.map(t => `<line x1="${pad.l}" y1="${t.y}" x2="${W - pad.r}" y2="${t.y}" stroke="#232830" stroke-width="0.5"/>`).join('')}
+          <!-- area fill -->
+          <polygon points="${areaPoints}" fill="url(#grad-${label})"/>
+          <!-- line -->
+          <polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+          <!-- y labels -->
+          ${yTicks.filter((_, j) => j % 2 === 0 || j === yTicks.length - 1).map(t =>
+            `<text x="${pad.l - 4}" y="${t.y + 3}" text-anchor="end" class="chart-axis-label">${t.label}</text>`
+          ).join('')}
+          <!-- x labels -->
+          ${xLabels.map(t =>
+            `<text x="${t.x}" y="${H - 4}" text-anchor="middle" class="chart-axis-label">${t.label}</text>`
+          ).join('')}
+        </svg>
+        <div style="text-align:right;font-size:9px;color:var(--text-dim);margin-top:2px;">
+          Peak: <span style="color:${color};font-weight:600;">${fmt(maxVal)}</span> ${unit}/mo · ${n} months
+        </div>
+      </div>
+    `;
+  }
+
+  // === Cumulative Chart ===
+  const cumOilMax = Math.max(...data.cum_oil);
+  const cumGasMax = Math.max(...data.cum_gas);
+
+  function makeCumChart() {
+    if (cumOilMax <= 0 && cumGasMax <= 0) return '';
+    const stepX = cw / (n - 1);
+    const maxVal = cumOilMax;  // primary axis
+
+    const oilPoints = data.cum_oil.map((v, i) => {
+      const x = pad.l + i * stepX;
+      const y = pad.t + ch - (maxVal > 0 ? (v / maxVal) * ch : 0);
+      return `${x},${y}`;
+    });
+
+    // Gas on secondary scale
+    const gasPoints = data.cum_gas.map((v, i) => {
+      const x = pad.l + i * stepX;
+      const y = pad.t + ch - (cumGasMax > 0 ? (v / cumGasMax) * ch : 0);
+      return `${x},${y}`;
+    });
+
+    const xStep = Math.max(1, Math.floor(n / 5));
+    const xLabels = [];
+    for (let i = 0; i < n; i += xStep) {
+      xLabels.push({
+        x: pad.l + i * stepX,
+        label: data.dates[i] ? data.dates[i].substring(0, 7) : '',
+      });
+    }
+
+    return `
+      <div class="chart-section">
+        <div class="chart-title">Cumulative Production</div>
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+          <defs>
+            <linearGradient id="grad-cum-oil" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#E8A838" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#E8A838" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <polygon points="${pad.l},${pad.t + ch} ${oilPoints.join(' ')} ${pad.l + (n-1)*stepX},${pad.t + ch}" fill="url(#grad-cum-oil)"/>
+          <polyline points="${oilPoints.join(' ')}" fill="none" stroke="#E8A838" stroke-width="1.5"/>
+          <polyline points="${gasPoints.join(' ')}" fill="none" stroke="#4ECDC4" stroke-width="1.2" stroke-dasharray="3,2"/>
+          ${xLabels.map(t =>
+            `<text x="${t.x}" y="${H - 4}" text-anchor="middle" class="chart-axis-label">${t.label}</text>`
+          ).join('')}
+          <text x="${pad.l - 4}" y="${pad.t + 6}" text-anchor="end" class="chart-axis-label">${fmt(cumOilMax)}</text>
+          <text x="${pad.l - 4}" y="${pad.t + ch + 3}" text-anchor="end" class="chart-axis-label">0</text>
+        </svg>
+        <div class="chart-legend">
+          <span><span class="chart-legend-dot" style="background:#E8A838;"></span>${fmt(cumOilMax)} bbl oil</span>
+          <span><span class="chart-legend-dot" style="background:#4ECDC4;"></span>${fmt(cumGasMax)} mcf gas</span>
+        </div>
+      </div>
+    `;
+  }
+
+  el.innerHTML =
+    makeChart(data.oil, oilMax, '#E8A838', 'rgba(232,168,56,0.15)', 'Monthly Oil', 'bbl') +
+    makeChart(data.gas, gasMax, '#4ECDC4', 'rgba(78,205,196,0.15)', 'Monthly Gas', 'mcf') +
+    makeCumChart();
+}
+
+function updateLegend() {
+  if (currentView === 'wells') {
+    const WELL_MODES = {
+      oil:   { key: 'oil',   label: 'Cumulative Oil',   unit: 'bbl', colorHex: '#E8A838' },
+      gas:   { key: 'gas',   label: 'Cumulative Gas',   unit: 'mcf', colorHex: '#4ECDC4' },
+      water: { key: 'water', label: 'Cumulative Water', unit: 'bbl', colorHex: '#58A6E8' },
+    };
+    const mode = currentMode === 'entities' ? 'oil' : currentMode;
+    const mc = WELL_MODES[mode];
+    const vals = wellsData[mc.key] || [];
+    let maxVal = 0;
+    for (let i = 0; i < vals.length; i++) if (vals[i] > maxVal) maxVal = vals[i];
+    const steps = [1, 0.4, 0.1, 0.01];
+    document.getElementById('map-legend').innerHTML = `
+      <h3>${mc.label}</h3>
+      <div class="legend-scale">
+        ${steps.map(pct => {
+          const val = maxVal * pct;
+          const norm = Math.sqrt(pct);
+          const size = Math.max(5, norm * 14);
+          return `<div class="legend-row">
+            <div class="legend-circle" style="width:${size}px;height:${size}px;background:${mc.colorHex};"></div>
+            ${fmt(val)} ${mc.unit}
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:9px;color:var(--text-dim);letter-spacing:0.05em;">
+        ${fmt(wellsData.n)} wells · click for details
+      </div>
+    `;
+    return;
+  }
+
+  const modeConfig = MODES[currentMode];
+  const values = countyData.filter(c => c.lat).map(c => c[modeConfig.field] || 0).filter(v => v > 0);
+  const maxVal = Math.max(...values);
+  const steps = [1, 0.5, 0.15, 0.03];
+
+  document.getElementById('map-legend').innerHTML = `
+    <h3>${modeConfig.label}</h3>
+    <div class="legend-scale">
+      ${steps.map(pct => {
+        const val = maxVal * pct;
+        const radius = getRadius(val, maxVal);
+        const size = Math.max(6, radius * 1.2);
+        return `<div class="legend-row">
+          <div class="legend-circle" style="
+            width:${size}px; height:${size}px;
+            background:${modeConfig.colorHex};
+          "></div>
+          ${fmt(val)} ${modeConfig.unit}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:10px;font-size:9px;color:var(--text-dim);letter-spacing:0.05em;">
+      2024–2026 · ${countyData.filter(c => c.lat).length} counties
+    </div>
+  `;
+}
+
+function showInfo(county) {
+  const panel = document.getElementById('info-panel');
+
+  // Build sparkline from yearly data
+  let sparkHtml = '';
+  if (yearlyData) {
+    const rows = yearlyData.filter(r => r.county === county.county && r.state === county.state)
+      .sort((a, b) => a.production_year - b.production_year);
+
+    if (rows.length > 1) {
+      const vals = rows.map(r => r.oil || 0);
+      const maxV = Math.max(...vals);
+      const w = 260, h = 40, pad = 2;
+      const stepX = (w - pad * 2) / (vals.length - 1);
+
+      const points = vals.map((v, i) => `${pad + i * stepX},${h - pad - (v / maxV) * (h - pad * 2)}`).join(' ');
+      const area = `${pad},${h - pad} ${points} ${pad + (vals.length - 1) * stepX},${h - pad}`;
+
+      sparkHtml = `
+        <div class="info-spark">
+          <div class="info-spark-label">Annual Oil ${rows[0].production_year}–${rows[rows.length-1].production_year}</div>
+          <svg class="spark-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+            <defs>
+              <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E8A838" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#E8A838" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <polygon points="${area}" fill="url(#sg)"/>
+            <polyline points="${points}" fill="none" stroke="#E8A838" stroke-width="1.5" stroke-linejoin="round"/>
+            ${vals.map((v, i) => `<circle cx="${pad + i * stepX}" cy="${h - pad - (v / maxV) * (h - pad * 2)}" r="2.5" fill="#E8A838"/>`).join('')}
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:2px;">
+            <span>${rows[0].production_year}</span><span>${rows[rows.length-1].production_year}</span>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  panel.innerHTML = `
+    <h3>${county.county}</h3>
+    <div class="info-state">${county.state === 'TX' ? 'Texas' : 'New Mexico'}</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-value oil">${fmt(county.total_oil)}</div>
+        <div class="info-label">Oil (bbl)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value gas">${fmt(county.total_gas)}</div>
+        <div class="info-label">Gas (mcf)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value water">${fmt(county.total_water)}</div>
+        <div class="info-label">Water (bbl)</div>
+      </div>
+      <div class="info-item">
+        <div class="info-value">${fmt(county.total_entities)}</div>
+        <div class="info-label">Entities</div>
+      </div>
+    </div>
+    ${sparkHtml}
+  `;
+  panel.classList.add('visible');
+}
+
+function hideInfo() {
+  document.getElementById('info-panel').classList.remove('visible');
+}
+
+async function main() {
+  const resp = await fetch('map_data.json');
+  if (!resp.ok) throw new Error('Failed to load map_data.json');
+  const raw = await resp.json();
+
+  countyData = raw.counties;
+  yearlyData = raw.yearly;
+  wellsData = raw.wells || { n: 0 };  // columnar: {n, id, state, name, op, county, lat, lng, type, oil, gas, water, months}
+
+  // Header stats
+  const totalOil = countyData.reduce((s, c) => s + (c.total_oil || 0), 0);
+  const totalGas = countyData.reduce((s, c) => s + (c.total_gas || 0), 0);
+  const totalEntities = countyData.reduce((s, c) => s + (c.total_entities || 0), 0);
+  document.getElementById('header-stats').innerHTML = `
+    <span><strong>${fmt(totalOil)}</strong> bbl oil</span>
+    <span><strong>${fmt(totalGas)}</strong> mcf gas</span>
+    <span><strong>${fmt(totalEntities)}</strong> entities</span>
+    <span><strong>${countyData.length}</strong> counties</span>
+    <span><strong>${fmt(wellsData.n)}</strong> wells mapped</span>
+  `;
+
+  // Initialize map centered on TX/NM
+  map = L.map('map', {
+    center: [31.8, -101.5],
+    zoom: 6,
+    preferCanvas: true,
+    zoomControl: true,
+    attributionControl: false,
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 14,
+    subdomains: 'abcd',
+  }).addTo(map);
+
+  // Labels on top layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 14,
+    subdomains: 'abcd',
+    pane: 'overlayPane',
+  }).addTo(map);
+
+  // Circle layers
+  circleLayer = L.layerGroup().addTo(map);
+  wellsLayer = L.layerGroup().addTo(map);
+
+  // Close info on map click
+  map.on('click', hideInfo);
+
+  // Re-render wells on zoom change (dot sizes adapt)
+  map.on('zoomend', () => {
+    if (currentView === 'wells') updateWells();
+  });
+
+  refreshMap();
+
+  // Hide loading
+  document.getElementById('loading').classList.add('hidden');
+}
+
+main().catch(err => {
+  document.getElementById('loading').innerHTML = `Error: ${err.message}`;
+  document.getElementById('loading').style.color = '#FF6B6B';
+});
+</script>
+</body>
+</html>

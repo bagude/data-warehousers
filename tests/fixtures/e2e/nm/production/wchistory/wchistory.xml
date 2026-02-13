@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <wchistory><api_st_cde>30</api_st_cde><api_cnty_cde>15</api_cnty_cde><api_well_idn>1</api_well_idn><pool_idn>100</pool_idn><wc_stat_cde>A</wc_stat_cde><well_typ_cde>OIL</well_typ_cde><well_nbr_idn>DELAWARE BASIN 1</well_nbr_idn><eff_dte>2024-01-01</eff_dte></wchistory>
+  <wchistory><api_st_cde>30</api_st_cde><api_cnty_cde>25</api_cnty_cde><api_well_idn>1</api_well_idn><pool_idn>200</pool_idn><wc_stat_cde>A</wc_stat_cde><well_typ_cde>GAS</well_typ_cde><well_nbr_idn>HOBBS GAS UNIT 1</well_nbr_idn><eff_dte>2024-01-01</eff_dte></wchistory>
+</root>

@@ -1,0 +1,21 @@
+name: og_warehouse
+version: "0.1.0"
+config-version: 2
+
+profile: og_warehouse
+
+model-paths: ["models"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+models:
+  og_warehouse:
+    +materialized: table
+    staging:
+      +materialized: view

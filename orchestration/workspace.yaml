@@ -1,0 +1,11 @@
+# Dagster workspace configuration.
+#
+# Start the local dev server from the project root:
+#
+#   dagster dev -w orchestration/workspace.yaml
+#
+
+load_from:
+  - python_file:
+      relative_path: definitions.py
+      working_directory: ..

@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: stg_production
+    description: >
+      Staging view over silver-layer Parquet files (via DuckDB read_parquet).
+      Adds computed total_oil_bbl (crude + condensate), total_gas_mcf (well gas
+      + casinghead), a unified entity_id, and production_year/production_month
+      extractions.  All silver columns are passed through unchanged.
+    columns:
+      - name: entity_id
+        description: "Unified entity identifier: api_number for wells, lease_number for leases."
+        tests:
+          - not_null
+
+      - name: state
+        description: "Two-letter state code: TX or NM."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["TX", "NM"]
+
+      - name: entity_type
+        description: "Record granularity: 'well' or 'lease'."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["well", "lease"]
+
+      - name: production_date
+        description: "First day of the production month."
+        tests:
+          - not_null
+
+      - name: total_oil_bbl
+        description: "Crude oil + condensate in barrels (NULLs coalesced to 0)."
+
+      - name: total_gas_mcf
+        description: "Gas well gas + casinghead gas in MCF (NULLs coalesced to 0)."
