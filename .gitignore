@@ -37,3 +37,6 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Session memory (queue is transient, diary is committed)
+.claude/memory/pending-transcripts.jsonl
