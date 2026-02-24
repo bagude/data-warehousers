@@ -40,3 +40,4 @@ Thumbs.db
 
 # Session memory (queue is transient, diary is committed)
 .claude/memory/pending-transcripts.jsonl
+map_data.json
