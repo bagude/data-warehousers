@@ -46,15 +46,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _FIPS_COUNTY_CODE: dict[int, str] = {
-    1: "Bernalillo", 3: "Catron", 5: "Chaves", 6: "Cibola",
-    7: "Colfax", 9: "Curry", 11: "De Baca", 13: "Dona Ana",
-    15: "Eddy", 17: "Grant", 19: "Guadalupe", 21: "Harding",
-    23: "Hidalgo", 25: "Lea", 27: "Lincoln", 28: "Los Alamos",
-    29: "Luna", 31: "McKinley", 33: "Mora", 35: "Otero",
-    37: "Quay", 39: "Rio Arriba", 41: "Roosevelt",
-    43: "Sandoval", 45: "San Juan", 47: "San Miguel",
-    49: "Santa Fe", 51: "Sierra", 53: "Socorro",
-    55: "Taos", 57: "Torrance", 59: "Union", 61: "Valencia",
+    1: "BERNALILLO", 3: "CATRON", 5: "CHAVES", 6: "CIBOLA",
+    7: "COLFAX", 9: "CURRY", 11: "DE BACA", 13: "DONA ANA",
+    15: "EDDY", 17: "GRANT", 19: "GUADALUPE", 21: "HARDING",
+    23: "HIDALGO", 25: "LEA", 27: "LINCOLN", 28: "LOS ALAMOS",
+    29: "LUNA", 31: "MCKINLEY", 33: "MORA", 35: "OTERO",
+    37: "QUAY", 39: "RIO ARRIBA", 41: "ROOSEVELT",
+    43: "SANDOVAL", 45: "SAN JUAN", 47: "SAN MIGUEL",
+    49: "SANTA FE", 51: "SIERRA", 53: "SOCORRO",
+    55: "TAOS", 57: "TORRANCE", 59: "UNION", 61: "VALENCIA",
 }
 # NOTE: The API county codes used by OCD (api_cnty_cde) are the FIPS county
 # code divided by 2 plus 1, i.e. the "odd" FIPS numbering scheme.  For
@@ -65,22 +65,22 @@ _FIPS_COUNTY_CODE: dict[int, str] = {
 # ---------------------------------------------------------------------------
 
 _COUNTY_TO_BASIN: dict[str, str] = {
-    "Chaves": "Permian",
-    "Eddy": "Permian",
-    "Lea": "Permian",
-    "Roosevelt": "Permian",
-    "Otero": "Permian",
-    "Lincoln": "Permian",
-    "San Juan": "San Juan",
-    "Rio Arriba": "San Juan",
-    "Sandoval": "San Juan",
-    "McKinley": "San Juan",
-    "Colfax": "Raton",
-    "Mora": "Raton",
-    "Union": "Raton",
-    "Harding": "Raton",
-    "Hidalgo": "Pedregosa",
-    "Santa Fe": "Estancia",
+    "CHAVES": "Permian",
+    "EDDY": "Permian",
+    "LEA": "Permian",
+    "ROOSEVELT": "Permian",
+    "OTERO": "Permian",
+    "LINCOLN": "Permian",
+    "SAN JUAN": "San Juan",
+    "RIO ARRIBA": "San Juan",
+    "SANDOVAL": "San Juan",
+    "MCKINLEY": "San Juan",
+    "COLFAX": "Raton",
+    "MORA": "Raton",
+    "UNION": "Raton",
+    "HARDING": "Raton",
+    "HIDALGO": "Pedregosa",
+    "SANTA FE": "Estancia",
 }
 
 # ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ def _derive_basin(county: Any) -> str | None:
     """Look up basin from county name."""
     if pd.isna(county):
         return None
-    return _COUNTY_TO_BASIN.get(str(county).strip(), None)
+    return _COUNTY_TO_BASIN.get(str(county).strip().upper(), None)
 
 
 # Mapping from GO-TECH directory/file stem patterns to canonical county names.
@@ -235,10 +235,10 @@ def _normalize_county_from_dir(dirname: str) -> str | None:
     """Convert a GO-TECH extraction directory name to a canonical county name.
 
     Examples:
-        "allwells_SanJuan"  -> "San Juan"
-        "allwells_Lea"      -> "Lea"
-        "allwells_RioArriba" -> "Rio Arriba"
-        "Eddy"              -> "Eddy"
+        "allwells_SanJuan"  -> "SAN JUAN"
+        "allwells_Lea"      -> "LEA"
+        "allwells_RioArriba" -> "RIO ARRIBA"
+        "Eddy"              -> "EDDY"
     """
     if not dirname:
         return None
@@ -1443,6 +1443,13 @@ class NmParser(BaseParser):
 
         # Step 4: Deduplicate
         silver_df = deduplicate(silver_df)
+
+        # Step 4b: Normalize text fields to UPPER case
+        for col in ("operator", "county", "field_name", "well_name"):
+            if col in silver_df.columns:
+                silver_df[col] = silver_df[col].where(
+                    silver_df[col].isna(), silver_df[col].str.upper()
+                )
 
         # Step 5: Validate
         result = validate_batch(silver_df)

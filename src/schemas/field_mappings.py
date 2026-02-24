@@ -30,8 +30,7 @@ that *is* available but happens to be zero.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Sequence
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -413,12 +412,178 @@ NM_FIELD_MAPPING: dict[str, FieldMapping] = {
 
 
 # ===================================================================
+# Oklahoma OCC — RBDMS Wells ArcGIS + RBDMS CSV
+# ===================================================================
+# Well master:     ArcGIS RBDMS_WELLS FeatureServer/220
+# Production data: RBDMS nightly CSV (well_data.csv)
+#
+# Production is at *well* level — one row per API per month.
+# ===================================================================
+
+OK_FIELD_MAPPING: dict[str, FieldMapping] = {
+    "state": FieldMapping(
+        source=None,
+        transform="constant:OK",
+        dtype="string",
+        nullable=False,
+        notes="Hard-coded to 'OK' for all Oklahoma records.",
+    ),
+    "entity_type": FieldMapping(
+        source=None,
+        transform="constant:well",
+        dtype="string",
+        nullable=False,
+        notes="OK OCC reports at well level. Always 'well'.",
+    ),
+    "api_number": FieldMapping(
+        source="api",
+        transform="normalize_api",
+        dtype="string",
+        nullable=False,
+        notes=(
+            "API well number from RBDMS_WELLS 'api' field or RBDMS CSV. "
+            "Format: 35-XXX-XXXXX (state code 35 = Oklahoma). "
+            "Normalized to NN-NNN-NNNNN format."
+        ),
+    ),
+    "lease_number": FieldMapping(
+        source=None,
+        dtype="string",
+        nullable=True,
+        notes="OK does not use TX-style lease numbers. Always NULL.",
+    ),
+    "district": FieldMapping(
+        source=None,
+        dtype="string",
+        nullable=True,
+        notes="OK does not have TX RRC-style districts. Always NULL.",
+    ),
+    "well_name": FieldMapping(
+        source="well_name",
+        dtype="string",
+        notes="Well name from RBDMS_WELLS ArcGIS 'well_name' field.",
+    ),
+    "operator": FieldMapping(
+        source="operator",
+        dtype="string",
+        notes="Operator name from RBDMS_WELLS ArcGIS 'operator' field.",
+    ),
+    "county": FieldMapping(
+        source="county",
+        dtype="string",
+        notes="County name from RBDMS_WELLS ArcGIS 'county' field.",
+    ),
+    "field_name": FieldMapping(
+        source=None,
+        dtype="string",
+        nullable=True,
+        notes=(
+            "Not directly available in the RBDMS wells ArcGIS layer. "
+            "May be derived from formation data if available. NULL by default."
+        ),
+    ),
+    "basin": FieldMapping(
+        source=None,
+        transform="derive_basin_from_county",
+        dtype="string",
+        nullable=True,
+        notes=(
+            "Derived from county using a lookup table (e.g. Woodward -> Anadarko, "
+            "Pontotoc -> Arkoma). May be NULL."
+        ),
+    ),
+    "well_type": FieldMapping(
+        source="welltype",
+        transform="normalize_well_type",
+        dtype="string",
+        notes=(
+            "Well type from RBDMS_WELLS 'welltype' field. "
+            "OCC symbol_class values: OIL, GAS, OIL/GAS, DRY, PLUGGED, etc. "
+            "Normalized to: 'OIL', 'GAS', 'INJ', 'OTHER'."
+        ),
+    ),
+    "well_status": FieldMapping(
+        source="wellstatus",
+        transform="normalize_well_status",
+        dtype="string",
+        notes=(
+            "Well status from RBDMS_WELLS 'wellstatus' field. "
+            "Normalized to: 'ACTIVE', 'SHUT-IN', 'P&A', 'INACTIVE', 'OTHER'."
+        ),
+    ),
+    "production_date": FieldMapping(
+        source=["production_year", "production_month"],
+        transform="combine_year_month",
+        dtype="date32",
+        nullable=False,
+        notes=(
+            "Constructed as the first day of the month from production year "
+            "and month fields. Result: date(YYYY, MM, 1)."
+        ),
+    ),
+    "oil_bbl": FieldMapping(
+        source="oil",
+        dtype="float64",
+        notes="Oil production in barrels from RBDMS CSV or production data.",
+    ),
+    "gas_mcf": FieldMapping(
+        source="gas",
+        dtype="float64",
+        notes="Gas production in MCF from RBDMS CSV or production data.",
+    ),
+    "condensate_bbl": FieldMapping(
+        source=None,
+        dtype="float64",
+        nullable=True,
+        notes=(
+            "OK OCC does not report condensate separately. It is typically "
+            "included in the oil_bbl figure. Always NULL at silver layer."
+        ),
+    ),
+    "casinghead_gas_mcf": FieldMapping(
+        source=None,
+        dtype="float64",
+        nullable=True,
+        notes=(
+            "OK OCC does not report casinghead gas separately. It is typically "
+            "included in the gas_mcf figure. Always NULL at silver layer."
+        ),
+    ),
+    "water_bbl": FieldMapping(
+        source="water",
+        dtype="float64",
+        nullable=True,
+        notes="Produced water in barrels, if available in production data.",
+    ),
+    "days_produced": FieldMapping(
+        source="days",
+        dtype="int32",
+        nullable=True,
+        notes="Number of producing days, if available in production data. 0-31.",
+    ),
+    "source_file": FieldMapping(
+        source=None,
+        transform="inject_source_filename",
+        dtype="string",
+        notes="Set by the parser to the bronze file path for lineage.",
+    ),
+    "ingested_at": FieldMapping(
+        source=None,
+        transform="inject_ingestion_timestamp",
+        dtype="timestamp[us, tz=UTC]",
+        notes="Set by the parser to the current UTC timestamp at ingest time.",
+    ),
+}
+
+
+# ===================================================================
 # Helpers
 # ===================================================================
 
 STATE_MAPPINGS: dict[str, dict[str, FieldMapping]] = {
     "TX": TX_FIELD_MAPPING,
     "NM": NM_FIELD_MAPPING,
+    "OK": OK_FIELD_MAPPING,
 }
 
 

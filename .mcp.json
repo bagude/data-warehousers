@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "data-warehouse": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "C:\\Users\\bagud\\Downloads\\claude_playground\\data-warehousers"
+    }
+  }
+}

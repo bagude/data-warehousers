@@ -9,9 +9,8 @@ Bronze-to-silver checks (``checks`` module):
 
 Silver-to-gold reconciliation (``reconciliation`` module):
 - ``reconcile_volumes``: Cross-check summed volumes between layers
-- ``reconcile_entity_counts``: Cross-check entity counts
 - ``check_pk_uniqueness``: Validate PK uniqueness on gold tables
-- ``check_month_completeness``: Flag gaps in well time series
+- ``check_month_completeness``: Flag gaps in entity time series
 - ``run_silver_to_gold_checks``: Orchestrator (silver_df + gold_tables -> results)
 
 Row-level value validation (API format, date ranges, state/entity_type enums)
@@ -31,7 +30,6 @@ from src.quality.reconciliation import (
     ReconciliationResult,
     check_month_completeness,
     check_pk_uniqueness,
-    reconcile_entity_counts,
     reconcile_volumes,
     run_silver_to_gold_checks,
 )
@@ -49,7 +47,6 @@ __all__ = [
     "ReconciliationResult",
     "check_month_completeness",
     "check_pk_uniqueness",
-    "reconcile_entity_counts",
     "reconcile_volumes",
     "run_silver_to_gold_checks",
 ]

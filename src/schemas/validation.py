@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 API_NUMBER_PATTERN = re.compile(r"^\d{2}-\d{3}-\d{5}$")
 """Expected format for API well numbers: NN-NNN-NNNNN (e.g. 42-123-45678)."""
 
-VALID_STATES = frozenset({"TX", "NM"})
+VALID_STATES = frozenset({"TX", "NM", "OK"})
 """Allowed values for the state field."""
 
 VALID_ENTITY_TYPES = frozenset({"well", "lease"})

@@ -445,6 +445,70 @@
   }
   .view-btn.active + .view-btn { border-left-color: var(--amber); }
 
+  /* Color-by control group */
+  .color-by-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 4px;
+  }
+
+  .color-by-label {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 4px 0 3px 2px;
+  }
+
+  .color-by-btns {
+    display: flex;
+    gap: 0;
+  }
+
+  .color-by-btn {
+    flex: 1;
+    background: rgba(18,21,27,0.92);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 5px 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+    text-transform: uppercase;
+  }
+
+  .color-by-btn:first-child { border-radius: 4px 0 0 4px; }
+  .color-by-btn:last-child { border-radius: 0 4px 4px 0; }
+  .color-by-btn:not(:first-child) { border-left: none; }
+  .color-by-btn:hover { color: var(--text); }
+  .color-by-btn.active {
+    color: var(--text-bright);
+    background: rgba(124,131,255,0.12);
+    border-color: #7C83FF;
+  }
+
+  /* Legend categorical items */
+  .legend-cat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .legend-cat-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
   /* Well tooltip */
   .well-tooltip {
     background: rgba(18,21,27,0.95) !important;
@@ -553,6 +617,24 @@
   <button class="control-btn" data-mode="gas" onclick="setMode('gas')">Gas (mcf)</button>
   <button class="control-btn" data-mode="water" onclick="setMode('water')">Water (bbl)</button>
   <button class="control-btn" data-mode="entities" onclick="setMode('entities')">Well Count</button>
+  <div class="color-by-group" id="color-by-group" style="display:none;">
+    <div class="color-by-label">Color by</div>
+    <div class="color-by-btns">
+      <button class="color-by-btn active" data-colorby="volume" onclick="setColorBy('volume')">Volume</button>
+      <button class="color-by-btn" data-colorby="state" onclick="setColorBy('state')">State</button>
+      <button class="color-by-btn" data-colorby="type" onclick="setColorBy('type')">Type</button>
+    </div>
+    <div class="color-by-btns" style="margin-top:-1px;">
+      <button class="color-by-btn" data-colorby="operator" onclick="setColorBy('operator')">Operator</button>
+      <button class="color-by-btn" data-colorby="basin" onclick="setColorBy('basin')">Basin</button>
+      <button class="color-by-btn" data-colorby="field" onclick="setColorBy('field')">Field</button>
+    </div>
+    <div class="color-by-btns" style="margin-top:-1px;">
+      <button class="color-by-btn" data-colorby="status" onclick="setColorBy('status')">Status</button>
+      <button class="color-by-btn" data-colorby="vintage" onclick="setColorBy('vintage')">Vintage</button>
+      <button class="color-by-btn" data-colorby="gor" onclick="setColorBy('gor')">GOR</button>
+    </div>
+  </div>
 </div>
 
 <div class="map-legend" id="map-legend"></div>
@@ -569,7 +651,43 @@ const MODES = {
 
 let currentMode = 'oil';
 let currentView = 'counties';
+let currentColorBy = 'volume';
 let map, circleLayer, wellsLayer, countyData, yearlyData, wellsData;
+
+// Categorical color palettes
+const CAT_PALETTES = {
+  state: {
+    TX: '#E8A838',  // amber
+    NM: '#4ECDC4',  // teal
+    OK: '#FF6B6B',  // coral
+  },
+  type: {
+    OIL: '#E8A838',
+    GAS: '#4ECDC4',
+    INJ: '#7C83FF',
+    OTHER: '#888',
+    '': '#555',
+  },
+};
+
+// Top-N categorical fields get assigned colors; rest get gray
+const CAT_COLORS = ['#E8A838','#4ECDC4','#FF6B6B','#7C83FF','#58A6E8','#C97BDB','#7BE8A8','#E87B7B','#D4AA5C','#8BC4E8','#E8D44D','#FF9F43'];
+let opColorMap = {};       // built on data load
+let basinColorMap = {};    // built on data load
+let fieldColorMap = {};    // built on data load
+let statusColorMap = {};   // built on data load
+let vintageColorMap = {};  // built on data load
+
+// GOR color scale: low GOR (oil-dominant) = amber, high GOR (gas-dominant) = teal
+function gorColor(gor) {
+  if (!gor || gor <= 0) return '#555';
+  // Clamp to 0-50000 range for color mapping
+  const t = Math.min(1, Math.log10(Math.max(1, gor)) / Math.log10(50000));
+  const r = Math.round(232 + (78 - 232) * t);
+  const g = Math.round(168 + (205 - 168) * t);
+  const b = Math.round(56 + (196 - 56) * t);
+  return `rgb(${r},${g},${b})`;
+}
 
 function fmt(n) {
   if (n == null) return '—';
@@ -598,6 +716,17 @@ function setView(view) {
   });
   // Show/hide entities button (only for county view)
   document.querySelector('[data-mode="entities"]').style.display = view === 'wells' ? 'none' : '';
+  // Show/hide color-by group (only for wells view)
+  document.getElementById('color-by-group').style.display = view === 'wells' ? '' : 'none';
+  if (view === 'counties') { currentColorBy = 'volume'; }
+  refreshMap();
+}
+
+function setColorBy(colorBy) {
+  currentColorBy = colorBy;
+  document.querySelectorAll('.color-by-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.colorby === colorBy);
+  });
   refreshMap();
 }
 
@@ -674,6 +803,19 @@ function updateCircles() {
   });
 }
 
+function getWellColor(i) {
+  const w = wellsData;
+  if (currentColorBy === 'state') return CAT_PALETTES.state[w.state[i]] || '#555';
+  if (currentColorBy === 'type') return CAT_PALETTES.type[w.type[i]] || '#555';
+  if (currentColorBy === 'operator') return opColorMap[w.op[i]] || '#444';
+  if (currentColorBy === 'basin') return basinColorMap[w.basin[i]] || '#444';
+  if (currentColorBy === 'field') return fieldColorMap[w.field[i]] || '#444';
+  if (currentColorBy === 'status') return statusColorMap[w.status[i]] || '#555';
+  if (currentColorBy === 'vintage') return vintageColorMap[w.vintage[i]] || '#555';
+  if (currentColorBy === 'gor') return gorColor(w.gor[i]);
+  return null;  // volume mode — caller uses magnitude-based color
+}
+
 function updateWells() {
   if (!wellsLayer || !wellsData || !wellsData.n) return;
   wellsLayer.clearLayers();
@@ -691,22 +833,33 @@ function updateWells() {
   const [cr, cg, cb] = colorMap[mode];
   const zoom = map.getZoom();
   const maxR = zoom >= 10 ? 12 : zoom >= 8 ? 7 : 4;
+  const isCategorical = currentColorBy !== 'volume';
 
   // At low zoom, skip tiny producers for perf (data is pre-sorted by oil desc)
   const minVal = zoom < 7 ? maxVal * 0.001 : 0;
 
   for (let i = 0; i < n; i++) {
     const v = vals[i] || 0;
-    if (!w.lat[i] || v <= minVal) continue;
+    if (!w.lat[i]) continue;
+    if (!isCategorical && v <= minVal) continue;
 
-    const norm = Math.sqrt(v / maxVal);
-    const r = Math.max(1.5, norm * maxR);
-    const op = 0.15 + norm * 0.65;
+    const norm = maxVal > 0 ? Math.sqrt(v / maxVal) : 0;
+    const r = isCategorical ? Math.max(2, (zoom >= 10 ? 5 : zoom >= 8 ? 3.5 : 2.5))
+                            : Math.max(1.5, norm * maxR);
+
+    let fillColor, fillOpacity;
+    if (isCategorical) {
+      fillColor = getWellColor(i);
+      fillOpacity = v > 0 ? 0.7 : 0.3;
+    } else {
+      fillColor = `rgb(${cr},${cg},${cb})`;
+      fillOpacity = 0.15 + norm * 0.65;
+    }
 
     const m = L.circleMarker([w.lat[i], w.lng[i]], {
       radius: r,
-      fillColor: `rgb(${cr},${cg},${cb})`,
-      fillOpacity: op,
+      fillColor: fillColor,
+      fillOpacity: fillOpacity,
       stroke: false,
     });
     m._wellIdx = i;
@@ -724,7 +877,8 @@ function onWellClick(e) {
 function showWellPopup(i, latlng) {
   const w = wellsData;
   const name = w.name[i] || w.id[i];
-  const stateFull = w.state[i] === 'TX' ? 'Texas' : w.state[i] === 'NM' ? 'New Mexico' : w.state[i];
+  const stateNames = { TX: 'Texas', NM: 'New Mexico', OK: 'Oklahoma' };
+  const stateFull = stateNames[w.state[i]] || w.state[i];
 
   L.popup({ className: 'well-popup', maxWidth: 300 })
     .setLatLng(latlng)
@@ -754,7 +908,8 @@ function showWellPopup(i, latlng) {
 function showWellSidePanel(i) {
   const w = wellsData;
   const name = w.name[i] || w.id[i];
-  const stateFull = w.state[i] === 'TX' ? 'Texas' : w.state[i] === 'NM' ? 'New Mexico' : w.state[i];
+  const stateNames = { TX: 'Texas', NM: 'New Mexico', OK: 'Oklahoma' };
+  const stateFull = stateNames[w.state[i]] || w.state[i];
   const panel = document.getElementById('info-panel');
 
   panel.innerHTML = `
@@ -941,6 +1096,68 @@ function renderWellHistory(data) {
 
 function updateLegend() {
   if (currentView === 'wells') {
+    // Categorical legend
+    if (currentColorBy !== 'volume') {
+      let entries = [];
+      let title = '';
+      if (currentColorBy === 'state') {
+        title = 'State';
+        entries = Object.entries(CAT_PALETTES.state);
+      } else if (currentColorBy === 'type') {
+        title = 'Well Type';
+        entries = Object.entries(CAT_PALETTES.type).filter(([k]) => k !== '');
+      } else if (currentColorBy === 'operator') {
+        title = 'Top Operators';
+        entries = Object.entries(opColorMap);
+        entries.push(['Other', '#444']);
+      } else if (currentColorBy === 'basin') {
+        title = 'Top Basins';
+        entries = Object.entries(basinColorMap);
+        entries.push(['Other', '#444']);
+      } else if (currentColorBy === 'field') {
+        title = 'Top Fields';
+        entries = Object.entries(fieldColorMap);
+        entries.push(['Other', '#444']);
+      } else if (currentColorBy === 'status') {
+        title = 'Well Status';
+        entries = Object.entries(statusColorMap);
+      } else if (currentColorBy === 'vintage') {
+        title = 'Vintage (1st Prod Year)';
+        const DECADE_COLORS = {
+          '< 1970': '#7C83FF', '1970s': '#58A6E8', '1980s': '#4ECDC4',
+          '1990s': '#7BE8A8', '2000s': '#E8D44D', '2010s': '#E8A838',
+          '2020s': '#FF6B6B',
+        };
+        entries = Object.entries(DECADE_COLORS);
+      } else if (currentColorBy === 'gor') {
+        title = 'Initial GOR (MCF/BBL)';
+        const gorSteps = [
+          ['< 10', gorColor(5)],
+          ['10–100', gorColor(50)],
+          ['100–1K', gorColor(500)],
+          ['1K–10K', gorColor(5000)],
+          ['> 10K', gorColor(30000)],
+        ];
+        entries = gorSteps;
+      }
+      document.getElementById('map-legend').innerHTML = `
+        <h3>${title}</h3>
+        <div class="legend-scale">
+          ${entries.map(([label, color]) => `
+            <div class="legend-cat-item">
+              <div class="legend-cat-swatch" style="background:${color};"></div>
+              ${label}
+            </div>
+          `).join('')}
+        </div>
+        <div style="margin-top:10px;font-size:9px;color:var(--text-dim);letter-spacing:0.05em;">
+          ${fmt(wellsData.n)} wells · click for details
+        </div>
+      `;
+      return;
+    }
+
+    // Volume-based legend (default)
     const WELL_MODES = {
       oil:   { key: 'oil',   label: 'Cumulative Oil',   unit: 'bbl', colorHex: '#E8A838' },
       gas:   { key: 'gas',   label: 'Cumulative Gas',   unit: 'mcf', colorHex: '#4ECDC4' },
@@ -1041,7 +1258,7 @@ function showInfo(county) {
 
   panel.innerHTML = `
     <h3>${county.county}</h3>
-    <div class="info-state">${county.state === 'TX' ? 'Texas' : 'New Mexico'}</div>
+    <div class="info-state">${{TX:'Texas',NM:'New Mexico',OK:'Oklahoma'}[county.state] || county.state}</div>
     <div class="info-grid">
       <div class="info-item">
         <div class="info-value oil">${fmt(county.total_oil)}</div>
@@ -1077,6 +1294,47 @@ async function main() {
   countyData = raw.counties;
   yearlyData = raw.yearly;
   wellsData = raw.wells || { n: 0 };  // columnar: {n, id, state, name, op, county, lat, lng, type, oil, gas, water, months}
+
+  // Build categorical color maps: top N by total oil get distinct colors
+  if (wellsData.n > 0) {
+    function buildTopNColorMap(arr, limit) {
+      const totals = {};
+      for (let i = 0; i < wellsData.n; i++) {
+        const v = arr[i] || '';
+        if (v) totals[v] = (totals[v] || 0) + (wellsData.oil[i] || 0);
+      }
+      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const map = {};
+      sorted.slice(0, limit).forEach(([key], idx) => { map[key] = CAT_COLORS[idx % CAT_COLORS.length]; });
+      return map;
+    }
+    opColorMap = buildTopNColorMap(wellsData.op, 10);
+    basinColorMap = buildTopNColorMap(wellsData.basin, 12);
+    fieldColorMap = buildTopNColorMap(wellsData.field, 12);
+
+    // Status: assign all unique values (typically few)
+    const statuses = [...new Set(wellsData.status.filter(s => s))];
+    statusColorMap = {};
+    statuses.forEach((s, i) => { statusColorMap[s] = CAT_COLORS[i % CAT_COLORS.length]; });
+
+    // Vintage: group by decade, assign colors chronologically
+    const DECADE_COLORS = {
+      '< 1970': '#7C83FF', '1970s': '#58A6E8', '1980s': '#4ECDC4',
+      '1990s': '#7BE8A8', '2000s': '#E8D44D', '2010s': '#E8A838',
+      '2020s': '#FF6B6B',
+    };
+    vintageColorMap = {};
+    for (let i = 0; i < wellsData.n; i++) {
+      const v = wellsData.vintage[i];
+      if (!v) continue;
+      let label;
+      if (v < 1970) label = '< 1970';
+      else label = Math.floor(v / 10) * 10 + 's';
+      if (!vintageColorMap[v]) {
+        vintageColorMap[v] = DECADE_COLORS[label] || '#555';
+      }
+    }
+  }
 
   // Header stats
   const totalOil = countyData.reduce((s, c) => s + (c.total_oil || 0), 0);

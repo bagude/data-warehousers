@@ -28,8 +28,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def handle_well_api(self, parsed):
         qs = parse_qs(parsed.query)
-        entity_id = qs.get("id", [None])[0]
-        if not entity_id:
+        entity_key = qs.get("id", [None])[0]
+        if not entity_key:
             self._json_resp(400, {"error": "missing ?id= parameter"})
             return
         try:
@@ -39,11 +39,11 @@ class Handler(SimpleHTTPRequestHandler):
                        coalesce(total_gas_mcf, 0),
                        coalesce(cumulative_oil_bbl, 0),
                        coalesce(cumulative_gas_mcf, 0),
-                       coalesce(months_on_production, 0)
-                from well_production_history
-                where entity_id = ? and entity_type = 'well'
+                       coalesce(reported_month_index, 0)
+                from production_monthly
+                where entity_key = ? and entity_type = 'well'
                 order by production_date
-            """, [entity_id]).fetchall()
+            """, [entity_key]).fetchall()
 
             data = {
                 "n": len(rows),
@@ -69,7 +69,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
         # Quieter logging — only show API calls, not static files
-        if "/api/" in (args[0] if args else ""):
+        first = str(args[0]) if args else ""
+        if "/api/" in first:
             super().log_message(fmt, *args)
 
 

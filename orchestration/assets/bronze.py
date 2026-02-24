@@ -1,4 +1,4 @@
-"""Bronze-layer assets -- raw data ingestion from TX RRC and NM OCD.
+"""Bronze-layer assets -- raw data ingestion from TX RRC, NM OCD, and OK OCC.
 
 Each asset runs the corresponding ingester and materialises raw files
 into ``data/bronze/{state}/{pull_date}/``.
@@ -7,6 +7,7 @@ Dependency graph::
 
     (none) --> bronze_tx
     (none) --> bronze_nm
+    (none) --> bronze_ok
 """
 
 import datetime
@@ -21,6 +22,7 @@ from dagster import (
 
 from src.ingestion.tx_rrc import TxRrcIngester
 from src.ingestion.nm_ocd import NmOcdIngester
+from src.ingestion.ok_occ import OkOccIngester
 from src.utils.config import ensure_data_dirs
 
 daily_partitions = DailyPartitionsDefinition(start_date="2026-01-01")
@@ -77,6 +79,34 @@ def bronze_nm(context: AssetExecutionContext) -> MaterializeResult:
         output_dir = ingester.ingest()
 
     context.log.info("NM OCD bronze complete: %s", output_dir)
+
+    return MaterializeResult(
+        metadata={
+            "pull_date": MetadataValue.text(pull_date),
+            "output_dir": MetadataValue.path(str(output_dir)),
+        },
+    )
+
+
+@asset(
+    group_name="bronze",
+    partitions_def=daily_partitions,
+    description=(
+        "Raw OK OCC data. Phase 1: ArcGIS RBDMS_WELLS JSON batches. "
+        "Phase 2: RBDMS well data CSV from OCC website."
+    ),
+)
+def bronze_ok(context: AssetExecutionContext) -> MaterializeResult:
+    """Ingest Oklahoma OCC well and production data for a given pull date."""
+    ensure_data_dirs()
+
+    pull_date = context.partition_key
+    context.log.info("Starting OK OCC ingestion for %s", pull_date)
+
+    with OkOccIngester(pull_date=pull_date, dagster_log=context.log) as ingester:
+        output_dir = ingester.ingest()
+
+    context.log.info("OK OCC bronze complete: %s", output_dir)
 
     return MaterializeResult(
         metadata={

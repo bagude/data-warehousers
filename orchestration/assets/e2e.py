@@ -3,7 +3,7 @@
 Mirrors the production bronze -> silver -> gold flow but:
 - Bronze: copies local fixture files (no network calls)
 - Silver: reuses existing parser logic with overridden paths
-- Gold: builds full dimensional model via DuckDB Python API
+- Gold: builds flat gold tables via DuckDB Python API
 
 All artifacts go to data/e2e/ to avoid polluting production data.
 """
@@ -24,7 +24,7 @@ from src.transforms.tx_parser import TxParser
 from src.transforms.nm_parser import NmParser
 from src.utils.config import PROJECT_ROOT
 
-from assets._dimensional_builder import build_dimensional_model
+from assets._gold_builder import build_gold
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -174,14 +174,14 @@ def test_silver_nm(context: AssetExecutionContext) -> MaterializeResult:
 
 
 # ---------------------------------------------------------------------------
-# Gold asset -- build dimensional model via shared _dimensional_builder
+# Gold asset -- build flat gold tables via shared _gold_builder
 # ---------------------------------------------------------------------------
 
 @asset(
     group_name="test_gold",
     deps=["test_silver_tx", "test_silver_nm"],
     description=(
-        "Build dimensional model and run validations via DuckDB Python API "
+        "Build gold tables and run data quality tests via DuckDB Python API "
         "against E2E silver data. Isolated DuckDB at data/e2e/warehouse.duckdb."
     ),
 )
@@ -194,7 +194,7 @@ def test_gold_models(context: AssetExecutionContext) -> MaterializeResult:
 
     silver_glob = str(E2E_SILVER_DIR / "**" / "*.parquet").replace("\\", "/")
 
-    result = build_dimensional_model(
+    result = build_gold(
         duckdb_path=E2E_DUCKDB,
         silver_parquet_glob=silver_glob,
         log=context.log,
@@ -203,11 +203,12 @@ def test_gold_models(context: AssetExecutionContext) -> MaterializeResult:
     return MaterializeResult(
         metadata={
             "duckdb_path": MetadataValue.path(str(E2E_DUCKDB)),
-            "tables_built": MetadataValue.int(result["tables_built"]),
-            "dim_lease": MetadataValue.int(result.get("dim_lease", 0)),
-            "dim_well": MetadataValue.int(result.get("dim_well", 0)),
-            "fact_event": MetadataValue.int(result.get("fact_event", 0)),
-            "fact_production_detail": MetadataValue.int(result.get("fact_production_detail", 0)),
-            "validation_errors": MetadataValue.int(len(result["validation_errors"])),
+            "stg_rows": MetadataValue.int(result["stg_rows"]),
+            "models_built": MetadataValue.int(len(result["models"])),
+            "tests_passed": MetadataValue.int(result["tests_passed"]),
+            **{
+                f"table_{name}": MetadataValue.int(count)
+                for name, count in result["models"].items()
+            },
         },
     )

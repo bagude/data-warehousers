@@ -1,1 +1,1 @@
-"""Gold dimensional model package."""
+"""Gold layer package."""

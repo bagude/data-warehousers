@@ -198,11 +198,11 @@ class TestNormalizeCountyFromDir:
         "dirname, expected",
         [
             # GO-TECH directory patterns
-            ("allwells_SanJuan", "San Juan"),
-            ("allwells_Lea", "Lea"),
-            ("allwells_RioArriba", "Rio Arriba"),
+            ("allwells_SanJuan", "SAN JUAN"),
+            ("allwells_Lea", "LEA"),
+            ("allwells_RioArriba", "RIO ARRIBA"),
             # Plain county name (in _COUNTY_TO_BASIN)
-            ("Eddy", "Eddy"),
+            ("Eddy", "EDDY"),
             # Empty string -> None
             ("", None),
         ],

@@ -18,6 +18,8 @@ dependencies = [
     "pandas",
     "pyarrow",
     "lxml",
+    "google-genai",
+    "pymupdf",
 ]
 
 [project.optional-dependencies]

@@ -311,6 +311,7 @@ class NmOcdIngester(BaseIngester):
                 "outFields": "*",
                 "resultOffset": offset,
                 "resultRecordCount": ARCGIS_BATCH_SIZE,
+                "outSR": "4326",
                 "f": "json",
             }
 

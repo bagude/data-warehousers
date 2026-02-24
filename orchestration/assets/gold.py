@@ -1,13 +1,15 @@
-"""Gold-layer assets -- build dimensional model via DuckDB Python API.
+"""Gold-layer assets -- build flat gold tables via DuckDB Python API.
 
-Depends on both silver assets.  Builds the full dimensional model
-(22 tables + 3 canonical views) into DuckDB, then runs validation.
+Depends on all silver assets.  Builds staging view + gold tables into DuckDB,
+then runs data quality tests.
 
 Dependency graph::
 
     silver_tx  \
-                --> gold_models --> (DuckDB dimensional model)
-    silver_nm  /
+                \
+    silver_nm  ---> gold_models --> (DuckDB gold tables)
+                /
+    silver_ok  /
 """
 
 import os
@@ -22,7 +24,7 @@ from dagster import (
 
 from src.utils.config import PROJECT_ROOT
 
-from assets._dimensional_builder import build_dimensional_model
+from assets._gold_builder import build_gold
 
 PROD_DUCKDB = Path(os.environ.get(
     "DUCKDB_PATH",
@@ -35,20 +37,19 @@ PROD_SILVER_GLOB = str(
 
 @asset(
     group_name="gold",
-    deps=["silver_tx", "silver_nm"],
+    deps=["silver_tx", "silver_nm", "silver_ok"],
     description=(
-        "Gold-layer dimensional model. Builds reference dimensions, time "
-        "dimensions, core dimensions (lease, well, wellbore, completion, "
-        "prod_unit), fact tables (event, bridge, production_detail), and "
-        "canonical views. Runs all post-load validations."
+        "Gold-layer tables. Builds stg_production view over silver Parquet, "
+        "then creates production_monthly, decline_curve_inputs, and "
+        "schema_registry tables. Runs all post-build data quality tests."
     ),
 )
 def gold_models(context: AssetExecutionContext) -> MaterializeResult:
-    """Build all gold-layer dimensional model tables and run validations."""
+    """Build all gold-layer tables and run data quality tests."""
     PROD_DUCKDB.parent.mkdir(parents=True, exist_ok=True)
-    context.log.info("Building dimensional model in %s", PROD_DUCKDB)
+    context.log.info("Building gold tables in %s", PROD_DUCKDB)
 
-    result = build_dimensional_model(
+    result = build_gold(
         duckdb_path=PROD_DUCKDB,
         silver_parquet_glob=PROD_SILVER_GLOB,
         log=context.log,
@@ -57,11 +58,12 @@ def gold_models(context: AssetExecutionContext) -> MaterializeResult:
     return MaterializeResult(
         metadata={
             "duckdb_path": MetadataValue.path(str(PROD_DUCKDB)),
-            "tables_built": MetadataValue.int(result["tables_built"]),
-            "dim_lease": MetadataValue.int(result.get("dim_lease", 0)),
-            "dim_well": MetadataValue.int(result.get("dim_well", 0)),
-            "fact_event": MetadataValue.int(result.get("fact_event", 0)),
-            "fact_production_detail": MetadataValue.int(result.get("fact_production_detail", 0)),
-            "validation_errors": MetadataValue.int(len(result["validation_errors"])),
+            "stg_rows": MetadataValue.int(result["stg_rows"]),
+            "models_built": MetadataValue.int(len(result["models"])),
+            "tests_passed": MetadataValue.int(result["tests_passed"]),
+            **{
+                f"table_{name}": MetadataValue.int(count)
+                for name, count in result["models"].items()
+            },
         },
     )

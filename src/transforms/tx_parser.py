@@ -470,7 +470,7 @@ class TxParser(BaseParser):
         wc["county"] = (
             wc.get("COUNTY_NAME", pd.Series(dtype="object"))
             .str.strip()
-            .str.title()
+            .str.upper()
         )
 
         # Aggregate to lease level.
@@ -580,18 +580,18 @@ class TxParser(BaseParser):
             "lease_number": merged["LEASE_NO"].str.strip(),
             "district": merged["DISTRICT_NO"].str.strip(),
             "well_name": (
-                merged["LEASE_NAME"].str.strip().str.title()
+                merged["LEASE_NAME"].str.strip().str.upper()
                 if "LEASE_NAME" in merged.columns
                 else pd.array([pd.NA] * n, dtype="string")
             ),
             "operator": (
-                merged["OPERATOR_NAME"].str.strip().str.title()
+                merged["OPERATOR_NAME"].str.strip().str.upper()
                 if "OPERATOR_NAME" in merged.columns
                 else pd.array([pd.NA] * n, dtype="string")
             ),
             "county": merged.get("county"),
             "field_name": (
-                merged["FIELD_NAME"].str.strip().str.title()
+                merged["FIELD_NAME"].str.strip().str.upper()
                 if "FIELD_NAME" in merged.columns
                 else pd.array([pd.NA] * n, dtype="string")
             ),

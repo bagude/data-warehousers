@@ -140,14 +140,14 @@ PRODUCTION_SCHEMA = pa.schema(
         # -- Geographic coordinates --
         pa.field("latitude", pa.float64(), metadata={
             b"description": (
-                b"Well/entity latitude in decimal degrees (WGS 84 / NAD 83). "
+                b"Well/entity latitude in decimal degrees (WGS 84 / EPSG 4326). "
                 b"Sourced from NM OCD ArcGIS well master or TX RRC drilling "
                 b"permit data. NULL when coordinates are not available."
             ),
         }),
         pa.field("longitude", pa.float64(), metadata={
             b"description": (
-                b"Well/entity longitude in decimal degrees (WGS 84 / NAD 83). "
+                b"Well/entity longitude in decimal degrees (WGS 84 / EPSG 4326). "
                 b"Sourced from NM OCD ArcGIS well master or TX RRC drilling "
                 b"permit data. NULL when coordinates are not available."
             ),

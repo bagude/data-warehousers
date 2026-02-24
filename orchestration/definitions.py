@@ -8,8 +8,10 @@ imported without colliding with the ``dagster`` library.
 Asset dependency graph (medallion flow)::
 
     bronze_tx  -->  silver_tx  \
-                                --> gold_models --> DuckDB tables
-    bronze_nm  -->  silver_nm  /
+                                \
+    bronze_nm  -->  silver_nm  ---> gold_models --> DuckDB tables
+                                /
+    bronze_ok  -->  silver_ok  /
 
 Local development::
 
@@ -30,8 +32,8 @@ if _THIS_DIR not in sys.path:
 
 from dagster import Definitions  # noqa: E402
 
-from assets.bronze import bronze_tx, bronze_nm  # noqa: E402
-from assets.silver import silver_tx, silver_nm  # noqa: E402
+from assets.bronze import bronze_tx, bronze_nm, bronze_ok  # noqa: E402
+from assets.silver import silver_tx, silver_nm, silver_ok  # noqa: E402
 from assets.gold import gold_models  # noqa: E402
 from assets.e2e import (  # noqa: E402
     test_bronze_tx,
@@ -53,8 +55,10 @@ defs = Definitions(
     assets=[
         bronze_tx,
         bronze_nm,
+        bronze_ok,
         silver_tx,
         silver_nm,
+        silver_ok,
         gold_models,
         test_bronze_tx,
         test_bronze_nm,

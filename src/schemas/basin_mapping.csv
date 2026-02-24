@@ -1,0 +1,69 @@
+state,county,basin
+NM,Chaves,Permian
+NM,Colfax,Raton
+NM,Eddy,Permian
+NM,Harding,Raton
+NM,Hidalgo,Pedregosa
+NM,Lea,Permian
+NM,Lincoln,Permian
+NM,McKinley,San Juan
+NM,Mora,Raton
+NM,Otero,Permian
+NM,Rio Arriba,San Juan
+NM,Roosevelt,Permian
+NM,San Juan,San Juan
+NM,Sandoval,San Juan
+NM,Santa Fe,Estancia
+NM,Union,Raton
+OK,Adair,Arkoma
+OK,Beaver,Hugoton
+OK,Beckham,Anadarko
+OK,Blaine,Anadarko
+OK,Caddo,Anadarko
+OK,Canadian,Anadarko
+OK,Carter,Ardmore
+OK,Cherokee,Arkoma
+OK,Cimarron,Hugoton
+OK,Coal,Arkoma
+OK,Creek,Cherokee Platform
+OK,Custer,Anadarko
+OK,Dewey,Anadarko
+OK,Ellis,Anadarko
+OK,Garfield,Cherokee Platform
+OK,Garvin,Ardmore
+OK,Grady,Anadarko
+OK,Grant,Cherokee Platform
+OK,Greer,Anadarko
+OK,Harmon,Anadarko
+OK,Haskell,Arkoma
+OK,Jackson,Anadarko
+OK,Jefferson,Marietta
+OK,Johnston,Ardmore
+OK,Kay,Cherokee Platform
+OK,Kingfisher,Cherokee Platform
+OK,Kiowa,Anadarko
+OK,Latimer,Arkoma
+OK,Le Flore,Arkoma
+OK,Lincoln,Cherokee Platform
+OK,Logan,Cherokee Platform
+OK,Love,Ardmore
+OK,Major,Anadarko
+OK,Marshall,Ardmore
+OK,McClain,Anadarko
+OK,McIntosh,Arkoma
+OK,Murray,Ardmore
+OK,Muskogee,Arkoma
+OK,Noble,Cherokee Platform
+OK,Oklahoma,Cherokee Platform
+OK,Osage,Cherokee Platform
+OK,Pawnee,Cherokee Platform
+OK,Payne,Cherokee Platform
+OK,Pittsburg,Arkoma
+OK,Pontotoc,Arkoma
+OK,Roger Mills,Anadarko
+OK,Sequoyah,Arkoma
+OK,Stephens,Ardmore
+OK,Texas,Hugoton
+OK,Washita,Anadarko
+OK,Washington,Cherokee Platform
+OK,Woodward,Anadarko

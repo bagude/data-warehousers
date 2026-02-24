@@ -3,12 +3,10 @@
 from datetime import date
 
 import pandas as pd
-import pytest
 
 from src.quality.reconciliation import (
     check_month_completeness,
     check_pk_uniqueness,
-    reconcile_entity_counts,
     reconcile_volumes,
 )
 
@@ -125,80 +123,6 @@ class TestReconcileVolumes:
 
 
 # ===================================================================
-# reconcile_entity_counts
-# ===================================================================
-
-class TestReconcileEntityCounts:
-    """Tests for reconcile_entity_counts()."""
-
-    def test_counts_match(self):
-        """Silver row counts and gold entity_count match -> passed=True."""
-        silver = pd.DataFrame({
-            "county": ["Eddy", "Eddy", "Lea"],
-            "state": ["NM", "NM", "NM"],
-            "production_date": [date(2024, 1, 1), date(2024, 1, 1), date(2024, 1, 1)],
-        })
-        gold = pd.DataFrame({
-            "county": ["Eddy", "Lea"],
-            "state": ["NM", "NM"],
-            "production_date": [date(2024, 1, 1), date(2024, 1, 1)],
-            "entity_count": [2, 1],
-        })
-        result = reconcile_entity_counts(
-            silver,
-            gold,
-            group_keys=["county", "state", "production_date"],
-        )
-
-        assert result.passed is True
-        assert result.name == "entity_count_reconciliation"
-
-    def test_count_mismatch(self):
-        """Gold entity_count does not match silver row count -> passed=False."""
-        silver = pd.DataFrame({
-            "county": ["Eddy", "Eddy"],
-            "state": ["NM", "NM"],
-            "production_date": [date(2024, 1, 1), date(2024, 1, 1)],
-        })
-        gold = pd.DataFrame({
-            "county": ["Eddy"],
-            "state": ["NM"],
-            "production_date": [date(2024, 1, 1)],
-            "entity_count": [5],  # Should be 2
-        })
-        result = reconcile_entity_counts(
-            silver,
-            gold,
-            group_keys=["county", "state", "production_date"],
-        )
-
-        assert result.passed is False
-        assert result.details["count_mismatches"] > 0
-
-    def test_missing_groups(self):
-        """Silver has groups not in gold -> passed=False."""
-        silver = pd.DataFrame({
-            "county": ["Eddy", "Lea"],
-            "state": ["NM", "NM"],
-            "production_date": [date(2024, 1, 1), date(2024, 1, 1)],
-        })
-        gold = pd.DataFrame({
-            "county": ["Eddy"],
-            "state": ["NM"],
-            "production_date": [date(2024, 1, 1)],
-            "entity_count": [1],
-        })
-        result = reconcile_entity_counts(
-            silver,
-            gold,
-            group_keys=["county", "state", "production_date"],
-        )
-
-        assert result.passed is False
-        assert result.details["silver_only"] > 0
-
-
-# ===================================================================
 # check_pk_uniqueness
 # ===================================================================
 
@@ -263,7 +187,7 @@ class TestCheckMonthCompleteness:
     def test_no_gaps(self):
         """Consecutive months with no gaps -> passed=True."""
         df = pd.DataFrame({
-            "entity_id": ["W001", "W001", "W001", "W001"],
+            "entity_key": ["W001", "W001", "W001", "W001"],
             "state": ["TX", "TX", "TX", "TX"],
             "production_date": [
                 date(2024, 1, 1),
@@ -280,7 +204,7 @@ class TestCheckMonthCompleteness:
     def test_gap_exceeds_max_gap_months(self):
         """Gap larger than max_gap_months -> passed=False, flagged_entities > 0."""
         df = pd.DataFrame({
-            "entity_id": ["W001", "W001"],
+            "entity_key": ["W001", "W001"],
             "state": ["TX", "TX"],
             "production_date": [
                 date(2024, 1, 1),
@@ -294,7 +218,7 @@ class TestCheckMonthCompleteness:
 
     def test_empty_dataframe(self):
         """Empty DataFrame -> passed=True."""
-        df = pd.DataFrame(columns=["entity_id", "state", "production_date"])
+        df = pd.DataFrame(columns=["entity_key", "state", "production_date"])
         result = check_month_completeness(df)
 
         assert result.passed is True
@@ -302,7 +226,7 @@ class TestCheckMonthCompleteness:
     def test_single_record_entity(self):
         """Entity with only one date -> passed=True (no gap possible with < 2 dates)."""
         df = pd.DataFrame({
-            "entity_id": ["W001"],
+            "entity_key": ["W001"],
             "state": ["TX"],
             "production_date": [date(2024, 6, 1)],
         })

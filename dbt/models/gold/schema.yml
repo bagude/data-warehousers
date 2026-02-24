@@ -2,16 +2,18 @@ version: 2
 
 models:
   # -------------------------------------------------------------------
-  # monthly_production_by_operator
+  # production_monthly
   # -------------------------------------------------------------------
-  - name: monthly_production_by_operator
+  - name: production_monthly
     description: >
-      Aggregated monthly oil, gas, and water production by operator, state,
-      and county.  Includes well/lease counts and both combined totals
-      (crude+condensate, well gas+casinghead) and raw component volumes.
+      Wide fact table with one row per entity per production month.
+      The default table for all production queries. Contains identity,
+      descriptive, geographic, time, volume, computed, and lineage columns.
+      entity_key resolves mixed grain: wells use api_number, leases use
+      TX-LEASE:{district}-{lease_number}.
     columns:
-      - name: operator
-        description: "Operator name."
+      - name: entity_key
+        description: "Unique entity identifier. Wells=api_number, leases=TX-LEASE:{district}-{lease_number}."
         tests:
           - not_null
 
@@ -23,136 +25,43 @@ models:
         tests:
           - not_null
 
-      - name: entity_count
-        description: "Total well + lease records aggregated into this row."
+      - name: reported_month_index
+        description: "Sequential count of rows with data per entity (1,2,3...)."
+        tests:
+          - not_null
 
-      - name: well_count
-        description: "Number of well-level records in this aggregation."
-
-      - name: lease_count
-        description: "Number of lease-level records in this aggregation."
+      - name: calendar_months_on_production
+        description: "Dense month count from first production date, including gaps."
+        tests:
+          - not_null
 
       - name: total_oil_bbl
-        description: "Sum of crude oil + condensate in barrels."
+        description: "oil_bbl + condensate_bbl (COALESCE nulls to 0)."
 
       - name: total_gas_mcf
-        description: "Sum of gas well gas + casinghead gas in MCF."
-
-    tests:
-      - unique:
-          column_name: "operator || '|' || state || '|' || coalesce(county, '') || '|' || cast(production_date as varchar)"
-
-  # -------------------------------------------------------------------
-  # monthly_production_by_field
-  # -------------------------------------------------------------------
-  - name: monthly_production_by_field
-    description: >
-      Aggregated monthly production by field/pool, basin, and state.
-      Includes well/lease counts.
-    columns:
-      - name: field_name
-        description: "Oil/gas field or NM pool name."
-        tests:
-          - not_null
-
-      - name: state
-        tests:
-          - not_null
-
-      - name: production_date
-        tests:
-          - not_null
-
-      - name: well_count
-        description: "Number of well-level records."
-
-      - name: lease_count
-        description: "Number of lease-level records."
-
-    tests:
-      - unique:
-          column_name: "field_name || '|' || coalesce(basin, '') || '|' || state || '|' || cast(production_date as varchar)"
-
-  # -------------------------------------------------------------------
-  # monthly_production_by_county
-  # -------------------------------------------------------------------
-  - name: monthly_production_by_county
-    description: >
-      Aggregated monthly production by county and state.  Geographic roll-up
-      for regional and mapping analysis.  Includes well/lease counts.
-    columns:
-      - name: county
-        description: "County name."
-        tests:
-          - not_null
-
-      - name: state
-        tests:
-          - not_null
-
-      - name: production_date
-        tests:
-          - not_null
-
-      - name: well_count
-        description: "Number of well-level records."
-
-      - name: lease_count
-        description: "Number of lease-level records."
-
-    tests:
-      - unique:
-          column_name: "county || '|' || state || '|' || cast(production_date as varchar)"
-
-  # -------------------------------------------------------------------
-  # well_production_history
-  # -------------------------------------------------------------------
-  - name: well_production_history
-    description: >
-      Well-level (and lease-level) time series with all monthly production
-      records.  Includes cumulative oil/gas/water and months_on_production
-      counter.  Unified entity_id for convenient querying.
-    columns:
-      - name: entity_id
-        description: "api_number for wells, state-district-lease_number for leases."
-        tests:
-          - not_null
-
-      - name: state
-        tests:
-          - not_null
-
-      - name: production_date
-        tests:
-          - not_null
-
-      - name: months_on_production
-        description: "Ordinal month counter (1 = first month for this entity)."
-        tests:
-          - not_null
+        description: "gas_mcf + casinghead_gas_mcf (COALESCE nulls to 0)."
 
       - name: cumulative_oil_bbl
-        description: "Running sum of total oil through this month."
+        description: "Running sum of total_oil_bbl per entity."
 
       - name: cumulative_gas_mcf
-        description: "Running sum of total gas through this month."
+        description: "Running sum of total_gas_mcf per entity."
 
       - name: cumulative_water_bbl
-        description: "Running sum of water through this month."
+        description: "Running sum of water_bbl per entity."
 
     tests:
       - unique:
-          column_name: "entity_id || '|' || state || '|' || cast(production_date as varchar)"
+          column_name: "entity_key || '|' || state || '|' || cast(production_date as varchar)"
 
   # -------------------------------------------------------------------
   # decline_curve_inputs
   # -------------------------------------------------------------------
   - name: decline_curve_inputs
     description: >
-      Per-well monthly production with decline curve analysis (DCA) inputs:
-      months_on_production counter, initial production rates, cumulative
-      volumes, and oil rate as percentage of initial.  Only well-level
-      records (entity_type = 'well') are included.
+      Well-only subset of production data for decline curve analysis (DCA).
+      Filtered to entity_type=well with non-zero production. Includes
+      months_on_production, initial rates, rate percentages, and cumulatives.
     columns:
       - name: api_number
         description: "API well number."
@@ -179,7 +88,7 @@ models:
         description: "Total gas (MCF) in this well's first producing month."
 
       - name: oil_rate_pct_of_initial
-        description: "Current month oil / initial oil * 100.  NULL if initial is 0."
+        description: "Current month oil / initial oil * 100. NULL if initial is 0."
 
       - name: cumulative_oil
         description: "Running sum of total oil through this month."
